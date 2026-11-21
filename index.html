@@ -164,7 +164,24 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 
 /* Speelveld */
 .play{display:grid;grid-template-columns:minmax(0,600px) minmax(260px,320px);gap:24px;align-items:start;justify-content:center}
-@media (max-width:860px){.play{grid-template-columns:minmax(0,1fr);gap:14px}.panel{max-width:600px;width:100%;margin:0 auto}}
+/* Tablet rechtop (iPad 744-860px): raster en cijferblok naast elkaar, compacter paneel */
+@media (max-width:860px) and (min-width:681px){
+  .play{grid-template-columns:minmax(0,1fr) minmax(210px,250px);gap:14px}
+  .panel{gap:10px}
+  .toolrow,.botrow,.padgrid{gap:6px}
+  .tool{aspect-ratio:1}
+  .tool svg{width:22px;height:22px}
+  .toolrow .tool span,.botrow .tool span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .botrow .tool{height:48px}
+  .key{font-size:26px}
+  .key.cornerkey,.key.centerkey{font-size:17px}
+  .mode .big,.mode .corner,.mode .center,.mode .small{width:30px;height:30px}
+  .wide,.hintkey{height:50px}
+  .hintkey{font-size:13px;gap:4px}
+  .modehelp{font-size:12px}
+  .hintcard{padding:10px 12px}
+}
+@media (max-width:680px){.play{grid-template-columns:minmax(0,1fr);gap:14px}.panel{max-width:600px;width:100%;margin:0 auto}}
 .boardcol{min-width:0;display:flex;flex-direction:column;gap:10px}
 .board-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .board-head h2{font-size:19px;margin-right:auto}
@@ -198,7 +215,8 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .tool{border:1px solid var(--line);background:var(--paper);border-radius:12px;aspect-ratio:1.25;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--muted)}
 .tool svg{width:24px;height:24px;color:var(--accent)}
 .tool:hover{border-color:var(--accent)}
-.padgrid{display:grid;grid-template-columns:repeat(3,1fr) 0.8fr;gap:8px}
+.padgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,.8fr);gap:8px}
+.padgrid>*{min-width:0}
 .key{position:relative;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-size:30px;font-weight:600;aspect-ratio:1.15;display:flex;align-items:center;justify-content:center}
 .key:hover{filter:brightness(1.08)}
 .key .left{position:absolute;right:7px;bottom:4px;font-size:11px;font-family:var(--f-body);opacity:.75;font-weight:500}
@@ -692,17 +710,17 @@ function renderPlay(){
     </section>
     <aside class="panel" aria-label="Bediening">
       <div class="toolrow">
-        <button class="tool" type="button" data-act="settings">${I.gear}<span>Instellingen</span></button>
-        <button class="tool" type="button" data-act="list">${I.list}<span>Verzameling</span></button>
-        <button class="tool" type="button" data-act="help">${I.help}<span>Uitleg</span></button>
-        <button class="tool" type="button" data-act="restart">${I.restart}<span>Opnieuw</span></button>
+        <button class="tool" type="button" data-act="settings" title="Instellingen">${I.gear}<span>Instellingen</span></button>
+        <button class="tool" type="button" data-act="list" title="Verzameling">${I.list}<span>Verzameling</span></button>
+        <button class="tool" type="button" data-act="help" title="Uitleg">${I.help}<span>Uitleg</span></button>
+        <button class="tool" type="button" data-act="restart" title="Opnieuw">${I.restart}<span>Opnieuw</span></button>
       </div>
       ${hint}${msg}
       ${pad}
       <div class="botrow">
-        <button class="tool" type="button" data-act="undo" ${S.undo.length?"":"disabled"}>${I.undo}<span>Terug</span></button>
-        <button class="tool" type="button" data-act="redo" ${S.redo.length?"":"disabled"}>${I.redo}<span>Vooruit</span></button>
-        <button class="tool" type="button" data-act="check">${I.check}<span>Controleer</span></button>
+        <button class="tool" type="button" data-act="undo" title="Terug" ${S.undo.length?"":"disabled"}>${I.undo}<span>Terug</span></button>
+        <button class="tool" type="button" data-act="redo" title="Vooruit" ${S.redo.length?"":"disabled"}>${I.redo}<span>Vooruit</span></button>
+        <button class="tool" type="button" data-act="check" title="Controleer">${I.check}<span>Controleer</span></button>
       </div>
     </aside></div>`;
 }
