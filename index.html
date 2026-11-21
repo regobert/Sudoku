@@ -973,7 +973,7 @@ function openPhotoSheet(){
       <button type="button" data-act="read-hint">${I.bulb}<b>Geef een hint</b><span>Alleen een tip voor de volgende stap. De puzzel wordt niet bewaard.</span></button>
       <button type="button" data-act="read-digi">${I.grid}<b>Digitaliseren</b><span>Zet de puzzel in je verzameling, met moeilijkheid als die op de foto staat.</span></button>
     </div>
-    <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button class="btn" type="button" data-act="pick">Andere foto</button><button class="btn ghost" type="button" data-act="close">Annuleren</button></div>`);
+    <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button class="btn" type="button" data-act="camera">${I.camera}Andere foto maken</button><button class="btn" type="button" data-act="upload">${I.upload}Uit fotorol</button><button class="btn ghost" type="button" data-act="close">Annuleren</button></div>`);
 }
 async function prepImage(file){
   const bmp=await createImageBitmap(file).catch(()=>null);
@@ -995,7 +995,7 @@ Answer with only JSON in exactly this shape:
 It may also be a killer sudoku: dashed or dotted cages with a small sum printed in a corner of the cage. If so, list every cage as {"sum":23,"cells":[[1,1],[1,2],[2,1]]} with 1-based [row, column]. The small cage sums are not cell digits: do not put them in rows.
 Add "cages":[...] to the JSON. Use "thermos":[] and "cages":[] for an ordinary sudoku.
 Use null for stars, difficultyText or title when there is none. difficultyText is a short Dutch phrase as the user would say it (e.g. "7 sterren", "Moeilijk", "Niveau 3"). If there is no sudoku in the photo, answer {"found":false}. Output only the JSON object, with no other text.`;
-const APP_VERSION="13";
+const APP_VERSION="14";
 /* Welke herkenning? Claude met sleutel, anders (of op verzoek) gratis op het apparaat. */
 const useFreeOCR=()=>!getKey()||!!S.settings.freeOcr||S.freeOnce;
 function loadOCR(){return window.SudokuOCR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="ocr.js?v="+APP_VERSION;sc.onload=()=>res();sc.onerror=()=>rej(new Error("De gratis herkenning kon niet worden geladen. Ben je verbonden met internet?"));document.head.appendChild(sc)})}
@@ -1009,7 +1009,7 @@ async function readPhoto(mode){
   $("#stopRead").onclick=()=>{ctl.abort();closeSheet()};
   try{
     const r=await readWithClaude(photo.blob,ctl.signal);
-    if(!r||r.found===false||!Array.isArray(r.rows)){sheet(`<h2>Geen sudoku gevonden</h2><p>Ik zie geen volledig sudoku-raster op deze foto. Probeer een nieuwe foto, recht van boven en met het hele raster in beeld.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="pick">Nieuwe foto</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button></div>`);return}
+    if(!r||r.found===false||!Array.isArray(r.rows)){sheet(`<h2>Geen sudoku gevonden</h2><p>Ik zie geen volledig sudoku-raster op deze foto. Probeer een nieuwe foto, recht van boven en met het hele raster in beeld.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="camera">${I.camera}Nieuwe foto</button><button class="btn" type="button" data-act="upload">${I.upload}Uit fotorol</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button></div>`);return}
     const rows=r.rows.map(s=>String(s).replace(/[^1-9.0 ]/g,"").replace(/[0 ]/g,".").padEnd(9,".").slice(0,9)).concat(Array(9).fill(".........")).slice(0,9).join("");
     const kinds=(Array.isArray(r.kinds)?r.kinds:[]).map(s=>String(s).padEnd(9,".").slice(0,9)).concat(Array(9).fill(".........")).slice(0,9).join("");
     const digits=toArr(rows);const kind=digits.map((v,i)=>v?(kinds[i]==="H"?"H":"P"):"");
@@ -1040,7 +1040,7 @@ async function readPhotoFree(mode){
     await loadOCR();
     const r=await SudokuOCR.read(photo.blob,{onProgress:prog});
     if(stop)return;
-    if(!r.found){sheet(`<h2>Geen raster gevonden</h2><p>De gratis herkenning vindt geen sudoku-raster op deze foto. Maak de foto recht van boven, met het hele raster goed in beeld en zonder schaduw.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${mode==="hint"?"quickhint":"camera"}">Nieuwe foto</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Sluiten</button></div>`);return}
+    if(!r.found){sheet(`<h2>Geen raster gevonden</h2><p>De gratis herkenning vindt geen sudoku-raster op deze foto. Maak de foto recht van boven, met het hele raster goed in beeld en zonder schaduw.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${mode==="hint"?"quickhint":"camera"}">${I.camera}Nieuwe foto</button><button class="btn" type="button" data-act="${mode==="hint"?"quickhint-up":"upload"}">${I.upload}Uit fotorol</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Sluiten</button></div>`);return}
     const digits=toArr(r.rows.join("")),kinds=r.kinds.join(""),kind=digits.map((v,i)=>v?(kinds[i]==="H"?"H":"P"):"");
     S.review={mode,engine:"free",unsure:new Set(r.unsure),thermos:Array.isArray(r.thermos)?r.thermos:[],autoThermos:(r.thermos||[]).length,cages:[],digits,kind,stars:null,difficultyText:"",
       title:"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),photo:photo.url,hintState:null,sel:-1};
@@ -1088,7 +1088,7 @@ function renderReview(){
     const H=R.hintState;
     side=`<div class="hintcard" role="status">${H?(H.done?`<p>Deze puzzel is al opgelost. Knap gedaan!</p>`:`<span class="lvl">Hint ${H.level+1} van ${H.steps.length}</span><p>${esc(H.steps[H.level])}</p>${H.level<H.steps.length-1?`<div class="acts"><button class="btn" type="button" data-act="rhintmore">${I.bulb}Meer hulp</button></div>`:""}`):`<p>Kon geen hint maken. Controleer of de cijfers goed zijn gelezen.</p>`}</div>
       <p class="notice">Klopt een cijfer niet met je foto? Tik het vakje aan en kies het goede cijfer. De hint past zich aan.</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="quickhint">${I.camera}Nieuwe foto, volgende hint</button><button class="btn" type="button" data-act="todigi">${I.grid}Toch digitaliseren</button></div>`;
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="quickhint">${I.camera}Nieuwe foto, volgende hint</button><button class="btn" type="button" data-act="quickhint-up">${I.upload}Uit fotorol</button><button class="btn" type="button" data-act="todigi">${I.grid}Toch digitaliseren</button></div>`;
   }else{
     side=`<div class="fields"><label class="field">Naam<input id="rTitle" value="${esc(R.title)}"></label>
       <label class="field">Sterren<input id="rStars" type="number" min="0" max="20" inputmode="numeric" value="${R.stars??""}" placeholder="–"></label></div>
@@ -1284,7 +1284,8 @@ document.addEventListener("click",e=>{
   switch(a){
     case"close":case"closebg":closeSheet();break;
     case"photo":openPhotoSheet();break;
-    case"pick":case"camera":S.quickHint=false;$("#fileIn").value="";$("#fileIn").click();break;
+    case"camera":S.quickHint=false;$("#fileIn").value="";$("#fileIn").click();break;
+    case"pick":S.quickHint=false;$("#fileUp").value="";$("#fileUp").click();break;
     case"upload":S.quickHint=false;$("#fileUp").value="";$("#fileUp").click();break;
     case"quickhint":S.quickHint=true;$("#fileIn").value="";$("#fileIn").click();break;
     case"quickhint-up":S.quickHint=true;$("#fileUp").value="";$("#fileUp").click();break;

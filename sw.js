@@ -1,11 +1,11 @@
 /* Sudoku Schrift service worker: de app werkt ook zonder internet.
    Verhoog VERSION bij elke wijziging aan de bestanden hieronder. */
-const VERSION = "v13";
+const VERSION = "v14";
 const CACHE = "sudoku-" + VERSION;
 const SHELL = [
   "./",
   "./index.html",
-  "./ocr.js?v=13",
+  "./ocr.js?v=14",
   "./manifest.webmanifest",
   "./vendor/anthropic-sdk-1.6.0.mjs",
   "./icons/icon-192.png",
