@@ -17,6 +17,14 @@ Een aparte soort puzzel: op elke thermometer worden de cijfers vanaf het bolletj
 - **Filter**: bij Mijn puzzels en in de verzameling kies je bij **Soort** voor Klassiek of Thermo.
 - Hints, Controleer en de foutmelding houden rekening met de thermometers.
 
+## Killer sudoku
+
+Een aparte soort puzzel: de cijfers in elke stippel-kooi tellen op tot het getal linksboven, en binnen een kooi komt geen cijfer dubbel voor.
+
+- **Nieuwe puzzel → Killer**: de app maakt killer sudoku's op de sterrenschaal (3 t/m 13). Hoe moeilijker, hoe groter de kooien en hoe minder gegeven cijfers.
+- **Van een foto**: Claude leest ook de kooien en hun sommen. Met de gratis herkenning teken je de kooien zelf (**Kooi tekenen**, vakjes aantikken, som invullen).
+- **Filter**: kies bij **Soort** voor Killer.
+
 ## Openen
 
 De app is een statische website en draait op GitHub Pages:
