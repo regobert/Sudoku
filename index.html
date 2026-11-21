@@ -179,6 +179,8 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .seg button svg{width:22px;height:22px}
 .seg button[aria-pressed="true"]{background:var(--paper);color:var(--accent);box-shadow:0 1px 3px rgb(0 0 0 / .15)}
 
+.cell.unsure{box-shadow:inset 0 0 0 3px var(--star)}
+
 /* Speelveld */
 .play{display:grid;grid-template-columns:minmax(0,600px) minmax(260px,320px);gap:24px;align-items:start;justify-content:center}
 /* Tablet rechtop (iPad 744-860px): raster en cijferblok naast elkaar, compacter paneel */
@@ -473,7 +475,7 @@ function readError(e){
 function openKeySheet(after){
   const has=!!getKey();
   sheet(`<h2>Fotoherkenning</h2>
-    <p>De app leest je foto's met Claude. Daarvoor heb je een eigen API-sleutel nodig van <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. Een foto lezen kost een paar cent van je API-tegoed.</p>
+    <p>De app leest je foto's met Claude. Daarvoor heb je een eigen API-sleutel nodig van <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. Een foto lezen kost een paar cent van je API-tegoed. Zonder sleutel gebruikt de app gratis herkenning op dit apparaat; die is minder nauwkeurig.</p>
     <p class="notice">De sleutel wordt alleen in deze browser bewaard en gaat alleen naar Anthropic. Gebruik dit alleen op je eigen apparaten.</p>
     <label class="field">API-sleutel<input id="keyIn" type="password" autocomplete="off" spellcheck="false" placeholder="${has?"Sleutel is ingesteld; typ een nieuwe om te vervangen":"sk-ant-..."}"></label>
     <p class="notice warn" id="keyErr" hidden></p>
@@ -814,7 +816,7 @@ function openPhotoSheet(){
   if(!photo){sheet(`<h2>Foto van een sudoku</h2>
     <div class="drop">${I.camera}<div>Maak een foto of upload er een uit je fotorol of bestanden. Zorg dat het hele raster erop staat.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn primary" type="button" data-act="camera">${I.camera}Foto maken</button><button class="btn" type="button" data-act="upload">${I.upload}Foto uploaden</button></div></div>
-    ${noVision?`<p class="notice">Om foto's te laten lezen heb je eenmalig een Claude API-sleutel nodig. <button class="btn ghost" type="button" data-act="key" style="padding:2px 4px;text-decoration:underline">Sleutel instellen</button></p>`:""}
+    ${noVision?`<p class="notice">Zonder API-sleutel leest de app je foto gratis op dit apparaat. Met een Claude-sleutel gaat het nauwkeuriger en worden ook sterren herkend. <button class="btn ghost" type="button" data-act="key" style="padding:2px 4px;text-decoration:underline">Sleutel instellen</button></p>`:""}
     <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button class="btn" type="button" data-act="manual">${I.grid}Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Annuleren</button></div>`);return}
   sheet(`<h2>Wat wil je met deze foto?</h2><img class="preview" src="${photo.url}" alt="Je foto van de sudoku">
     <div class="choice">
@@ -840,8 +842,12 @@ Look for a difficulty indication anywhere on the page or screen: a number of sta
 Answer with only JSON in exactly this shape:
 {"found":true,"rows":["392......", ... 9 strings of 9 characters],"kinds":["PPP......", ... 9 strings, P/H/. matching rows],"stars":7,"difficultyText":"7 sterren","title":"49"}
 Use null for stars, difficultyText or title when there is none. difficultyText is a short Dutch phrase as the user would say it (e.g. "7 sterren", "Moeilijk", "Niveau 3"). If there is no sudoku in the photo, answer {"found":false}. Output only the JSON object, with no other text.`;
+/* Welke herkenning? Claude met sleutel, anders (of op verzoek) gratis op het apparaat. */
+const useFreeOCR=()=>!getKey()||!!S.settings.freeOcr||S.freeOnce;
+function loadOCR(){return window.SudokuOCR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="ocr.js";sc.onload=()=>res();sc.onerror=()=>rej(new Error("De gratis herkenning kon niet worden geladen. Ben je verbonden met internet?"));document.head.appendChild(sc)})}
 async function readPhoto(mode){
-  if(!getKey()){openKeySheet(mode);return}
+  const free=useFreeOCR();S.freeOnce=false;
+  if(free)return readPhotoFree(mode);
   const ctl=new AbortController();
   sheet(`<h2>${mode==="hint"?"Even kijken…":"Puzzel overnemen…"}</h2><img class="preview" src="${photo.url}" alt="">
     <div class="busyline"><div class="spinner" aria-hidden="true"></div><span id="busyTxt">${mode==="hint"?"Claude leest je puzzel, ook de cijfers die je zelf hebt ingevuld. Daarna volgt je hint. Dit duurt meestal 20 tot 60 seconden.":"Claude leest de cijfers van je foto. Dit duurt meestal 20 tot 60 seconden."}</span></div>
@@ -854,14 +860,37 @@ async function readPhoto(mode){
     const kinds=(Array.isArray(r.kinds)?r.kinds:[]).map(s=>String(s).padEnd(9,".").slice(0,9)).concat(Array(9).fill(".........")).slice(0,9).join("");
     const digits=toArr(rows);const kind=digits.map((v,i)=>v?(kinds[i]==="H"?"H":"P"):"");
     const stars=Number.isFinite(+r.stars)&&+r.stars>0&&+r.stars<=20?Math.round(+r.stars):null;
-    S.review={mode,digits,kind,stars,difficultyText:r.difficultyText?String(r.difficultyText).slice(0,40):(stars?`${stars} sterren`:""),
+    S.review={mode,engine:"claude",unsure:new Set(),digits,kind,stars,difficultyText:r.difficultyText?String(r.difficultyText).slice(0,40):(stars?`${stars} sterren`:""),
       title:r.title?(/^\d+$/.test(String(r.title))?"Sudoku "+r.title:String(r.title).slice(0,40)):"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),
       photo:photo.url,hintState:null,sel:-1};
     closeSheet();S.view="review";S.sel=-1;render();window.scrollTo(0,0);
   }catch(e){
     if(ctl.signal.aborted)return;
     const why=readError(e);
-    sheet(`<h2>Dat lukte niet</h2><p>${esc(why)}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${mode==="hint"?"read-hint":"read-digi"}">Opnieuw proberen</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Sluiten</button></div>`);
+    sheet(`<h2>Dat lukte niet</h2><p>${esc(why)}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${mode==="hint"?"read-free-hint":"read-free-digi"}">Gratis herkenning gebruiken</button><button class="btn" type="button" data-act="${mode==="hint"?"read-hint":"read-digi"}">Opnieuw proberen</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Sluiten</button></div>
+      <p class="notice">De gratis herkenning werkt op dit apparaat, zonder sleutel of tegoed. Hij is minder nauwkeurig: controleer daarna de cijfers met je foto.</p>`);
+  }
+}
+async function readPhotoFree(mode){
+  let stop=false;
+  sheet(`<h2>${mode==="hint"?"Even kijken…":"Puzzel overnemen…"}</h2><img class="preview" src="${photo.url}" alt="">
+    <div class="busyline"><div class="spinner" aria-hidden="true"></div><span id="busyTxt">Gratis herkenning op dit apparaat. De eerste keer wordt de herkenning geladen (ongeveer 10 MB).</span></div>
+    <div class="bar" aria-hidden="true"><i id="busyBar" style="width:2%"></i></div>
+    <div><button class="btn" type="button" id="stopRead">Stoppen</button></div>`);
+  $("#stopRead").onclick=()=>{stop=true;closeSheet()};
+  const prog=(t,f)=>{const a=$("#busyTxt"),b=$("#busyBar");if(a)a.textContent=t;if(b)b.style.width=Math.round(Math.max(.02,Math.min(1,f))*100)+"%"};
+  try{
+    await loadOCR();
+    const r=await SudokuOCR.read(photo.blob,{onProgress:prog});
+    if(stop)return;
+    if(!r.found){sheet(`<h2>Geen raster gevonden</h2><p>De gratis herkenning vindt geen sudoku-raster op deze foto. Maak de foto recht van boven, met het hele raster goed in beeld en zonder schaduw.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${mode==="hint"?"quickhint":"camera"}">Nieuwe foto</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Sluiten</button></div>`);return}
+    const digits=toArr(r.rows.join("")),kinds=r.kinds.join(""),kind=digits.map((v,i)=>v?(kinds[i]==="H"?"H":"P"):"");
+    S.review={mode,engine:"free",unsure:new Set(r.unsure),digits,kind,stars:null,difficultyText:"",
+      title:"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),photo:photo.url,hintState:null,sel:-1};
+    closeSheet();S.view="review";S.sel=-1;render();if(mode==="hint"){reviewHint();renderReview()}window.scrollTo(0,0);
+  }catch(e){
+    if(stop)return;
+    sheet(`<h2>Dat lukte niet</h2><p>${esc(e?.message||"De gratis herkenning is niet gelukt.")}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${mode==="hint"?"read-hint":"read-digi"}">Opnieuw proberen</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Sluiten</button></div>`);
   }
 }
 function startManual(){closeSheet();S.review={mode:"digi",digits:Array(81).fill(0),kind:Array(81).fill(""),stars:null,difficultyText:"",title:"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),photo:photo?.url||null,sel:0};S.view="review";render()}
@@ -910,6 +939,7 @@ function renderReview(){
       ${R.mode==="hint"?"":side}
       ${R.photo?`<img class="photo-ref" src="${R.photo}" alt="Je foto ter vergelijking">`:""}
       <div class="msg ${st.kind}">${esc(st.text)}</div>
+      ${R.engine==="free"?`<p class="notice" style="margin:0">Gelezen met de gratis herkenning. Vergelijk de cijfers met je foto${R.unsure&&R.unsure.size?`; ${R.unsure.size} ${R.unsure.size===1?"twijfelgeval is":"twijfelgevallen zijn"} oranje omrand`:""}.${R.mode!=="hint"?" Sterren vul je zelf in.":""}</p>`:""}
       <div class="padgrid" style="grid-template-columns:repeat(3,1fr)">${keys}
         <button type="button" class="tool" data-act="rkind" style="aspect-ratio:auto;height:54px">${I.pencil}<span>Gedrukt / zelf</span></button>
         <button type="button" class="tool" data-act="rerase" style="aspect-ratio:auto;height:54px">${I.erase}<span>Wissen</span></button>
@@ -917,11 +947,12 @@ function renderReview(){
       </div>
     </aside></div>`;
   R.status=st;
+  if(R.unsure&&R.unsure.size)R.unsure.forEach(i=>main.querySelector(`[data-cell="${i}"]`)?.classList.add("unsure"));
 }
 function reviewHint(){const R=S.review,st=reviewStatus(R);
   const givens=st.givens||R.digits.map((v,i)=>R.kind[i]==="P"?v:0);
   const h=findHint(givens,R.digits,st.solution);R.hintState=h?Object.assign(h,{level:0}):null}
-function reviewInput(d){const R=S.review;if(R.sel<0)return;R.digits[R.sel]=d;R.kind[R.sel]=d?(R.kind[R.sel]||(R.mode==="hint"?"H":"P")):"";if(R.mode==="hint")reviewHint();renderReview();main.querySelector(`[data-cell="${R.sel}"]`)?.focus({preventScroll:true})}
+function reviewInput(d){const R=S.review;if(R.sel<0)return;R.unsure?.delete(R.sel);R.digits[R.sel]=d;R.kind[R.sel]=d?(R.kind[R.sel]||(R.mode==="hint"?"H":"P")):"";if(R.mode==="hint")reviewHint();renderReview();main.querySelector(`[data-cell="${R.sel}"]`)?.focus({preventScroll:true})}
 function saveDigitized(){
   const R=S.review,t=$("#rTitle"),s=$("#rStars"),d=$("#rDiff");
   const stars=s&&s.value!==""?Math.max(0,Math.min(20,parseInt(s.value)||0))||null:null;
@@ -936,7 +967,8 @@ function saveDigitized(){
 function openSettings(){
   const row=(k,l,d)=>`<label class="setrow"><span>${l}<br><span class="notice">${d}</span></span><input type="checkbox" id="set-${k}" data-set="${k}" ${S.settings[k]?"checked":""}></label>`;
   sheet(`<h2>Instellingen</h2>${themeSeg()}${row("same","Markeer gelijke cijfers","Licht alle vakjes met hetzelfde cijfer op.")}${row("peers","Markeer rij, kolom en blok","Toon de vakjes die bij het gekozen vakje horen.")}${row("live","Fouten meteen tonen","Een fout cijfer wordt direct rood. Uit: alleen na Controleer.")}${row("autonotes","Notities automatisch bijwerken","Haalt een cijfer weg uit de hoek- en middencijfers in dezelfde rij, kolom en blok als je het invult.")}
-  <div class="setrow"><span>Fotoherkenning<br><span class="notice">${getKey()?"API-sleutel is ingesteld.":"Nog geen API-sleutel ingesteld."}</span></span><button class="btn" type="button" data-act="key">Sleutel</button></div>
+  <div class="setrow"><span>Fotoherkenning<br><span class="notice">${getKey()?(S.settings.freeOcr?"Gratis op dit apparaat (sleutel is ingesteld maar wordt niet gebruikt).":"Claude, met je API-sleutel."):"Gratis op dit apparaat. Met een Claude API-sleutel gaat het nauwkeuriger."}</span></span><button class="btn" type="button" data-act="key">Sleutel</button></div>
+  ${getKey()?`<button type="button" class="switchrow" role="switch" aria-checked="${!!S.settings.freeOcr}" data-act="free-ocr"><span>Altijd gratis herkenning<br><span class="notice">Leest foto's op dit apparaat, zonder API-tegoed te gebruiken. Minder nauwkeurig, geen sterren.</span></span><span class="track" aria-hidden="true"><span class="knob"></span></span></button>`:""}
   <div class="setrow"><span>Back-up<br><span class="notice">Zet je puzzels over naar een ander apparaat.</span></span><button class="btn" type="button" data-act="backup">Back-up</button></div>
   ${S.view==="play"&&S.cur?`<div class="setrow" style="border:0"><span>Deze puzzel verwijderen uit je verzameling</span><button class="btn danger" type="button" data-act="askdelete">Verwijderen</button></div>`:""}
   <div><button class="btn primary" type="button" data-act="close">Klaar</button></div>`)}
@@ -1077,6 +1109,9 @@ document.addEventListener("click",e=>{
     case"manual":startManual();break;
     case"read-hint":readHint();break;
     case"read-digi":readPhoto("digi");break;
+    case"read-free-hint":S.freeOnce=true;readHint();break;
+    case"read-free-digi":S.freeOnce=true;readPhoto("digi");break;
+    case"free-ocr":S.settings.freeOcr=!S.settings.freeOcr;ls.set("sudoku-settings",S.settings);openSettings();break;
     case"list":closeSheet();goList();break;
     case"home":goHome();break;
     case"install":if(installEvt){installEvt.prompt();installEvt.userChoice.finally(()=>{installEvt=null;render()})}break;

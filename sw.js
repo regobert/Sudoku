@@ -1,10 +1,11 @@
 /* Sudoku Schrift service worker: de app werkt ook zonder internet.
    Verhoog VERSION bij elke wijziging aan de bestanden hieronder. */
-const VERSION = "v6";
+const VERSION = "v7";
 const CACHE = "sudoku-" + VERSION;
 const SHELL = [
   "./",
   "./index.html",
+  "./ocr.js",
   "./manifest.webmanifest",
   "./vendor/anthropic-sdk-1.6.0.mjs",
   "./icons/icon-192.png",
@@ -50,6 +51,15 @@ self.addEventListener("fetch", (e) => {
         return hit || net;
       }))
     );
+    return;
+  }
+
+  // Gratis herkenning (groot): pas bewaren als je hem voor het eerst gebruikt.
+  if (url.origin === self.location.origin && url.pathname.includes("/vendor/tesseract/")) {
+    e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => {
+      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
+      return res;
+    })));
     return;
   }
 

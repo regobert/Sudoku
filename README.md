@@ -32,7 +32,14 @@ Maak een sleutel aan op <https://console.anthropic.com/settings/keys>.
 - Een foto lezen kost een paar cent van je API-tegoed.
 - Gebruik de app met sleutel alleen op je eigen apparaten.
 
-Zonder sleutel kun je een puzzel ook zelf overtypen.
+### Gratis herkenning (zonder sleutel)
+
+Zonder API-sleutel, of als Claude niet lukt (bijvoorbeeld geen tegoed), leest de app de foto gratis op het apparaat zelf met [Tesseract](https://github.com/naptha/tesseract.js):
+het raster wordt gezocht en rechtgetrokken, elk vakje wordt apart gelezen, en een scheve of gedraaide foto wordt automatisch gedraaid.
+Twijfelgevallen worden oranje omrand. Sterren en ingevulde cijfers worden minder goed herkend dan met Claude.
+Bij Instellingen kun je met **Altijd gratis herkenning** ook met een sleutel de gratis versie gebruiken.
+
+Je kunt een puzzel ook zelf overtypen.
 
 ## Opslag
 
@@ -51,6 +58,8 @@ Terugzetten voegt samen: nieuwe puzzels komen erbij, en van een puzzel die op be
 ## Bestanden
 
 - `index.html`: de hele app (HTML, CSS en JavaScript).
+- `ocr.js`: gratis herkenning op het apparaat.
+- `vendor/tesseract/`: Tesseract.js 6.0.1 (Apache-2.0) met de Engelse taaldata (tessdata best_int), alleen geladen als je de gratis herkenning gebruikt.
 - `manifest.webmanifest`, `sw.js`, `icons/`: maken de app installeerbaar en offline bruikbaar. Verhoog `VERSION` in `sw.js` als je bestanden wijzigt.
 - `vendor/anthropic-sdk-1.6.0.mjs`: de officiële Anthropic TypeScript SDK (`@anthropic-ai/sdk` 1.6.0), gebundeld voor de browser.
   Opnieuw maken:
