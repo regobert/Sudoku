@@ -52,7 +52,7 @@ h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
 header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block:18px 14px}
 .brand{display:flex;align-items:center;gap:10px;margin-right:auto}
 .brand h1{font-size:24px;font-weight:700;letter-spacing:-.01em}
-.logo{width:34px;height:34px;border-radius:9px;background:var(--accent);display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:5px}
+.logo{display:grid;flex:none;width:34px;height:34px;border-radius:9px;background:var(--accent);display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:5px}
 .logo i{background:var(--accent-ink);opacity:.9;border-radius:2px}
 .logo i:nth-child(2n){opacity:.35}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:9px 14px;font-weight:500}
@@ -72,6 +72,7 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .list-head{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-block:6px 14px}
 .list-head h2{font-size:20px}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+@media (max-width:560px){.cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{padding:10px;gap:8px}.card .mini{font-size:9px}.card h3{font-size:14px}.card .row{flex-wrap:wrap}}
 .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px;text-align:left}
 .card:hover{border-color:var(--accent)}
 .card .mini{width:100%;aspect-ratio:1;max-width:100%;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));border:2px solid var(--line-strong);border-radius:4px;overflow:hidden;font-family:var(--f-display);font-size:11px;background:var(--paper)}
@@ -92,6 +93,39 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .empty{background:var(--paper);border:1px dashed var(--line);border-radius:var(--r);padding:22px;display:flex;flex-direction:column;gap:10px;max-width:620px}
 .empty h3{font-size:18px}
 .example-tag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+/* Openingspagina */
+.home{display:flex;flex-direction:column;gap:26px}
+.home-hello h2{font-size:clamp(24px,4.4vw,34px);font-weight:700;letter-spacing:-.015em}
+.home-hello p{margin:4px 0 0;color:var(--muted)}
+.sec-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
+.sec-title h3{font-size:17px;font-weight:600}
+.linkbtn{background:none;border:0;color:var(--accent);font-weight:600;padding:4px}
+.continue{display:grid;grid-template-columns:150px minmax(0,1fr);gap:18px;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px;text-align:left;width:100%}
+.continue:hover{border-color:var(--accent)}
+.continue .mini{width:100%;aspect-ratio:1;max-width:100%;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));border:2px solid var(--line-strong);border-radius:4px;overflow:hidden;font-family:var(--f-display);font-size:9px;background:var(--paper)}
+.continue .info{display:flex;flex-direction:column;gap:8px;min-width:0}
+.continue h4{margin:0;font-family:var(--f-display);font-size:20px}
+.continue .go{align-self:flex-start;margin-top:4px}
+@media (max-width:480px){.continue{grid-template-columns:96px minmax(0,1fr);gap:12px}}
+.levels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:720px){.levels{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.level{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:6px;min-width:0}
+.level:hover{border-color:var(--accent)}
+.level b{font-family:var(--f-display);font-size:18px}
+.level span.d{font-size:12.5px;color:var(--muted)}
+.level .row-stars{display:flex;gap:2px}
+.level .row-stars svg{width:15px;height:15px;fill:var(--star)}
+.level .row-stars svg.off{fill:var(--line)}
+.level[aria-busy="true"]{opacity:.6}
+.sources{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:520px){.sources{grid-template-columns:minmax(0,1fr)}}
+.source{display:flex;gap:12px;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left}
+.source:hover{border-color:var(--accent)}
+.source svg{width:30px;height:30px;color:var(--accent);flex:none}
+.source b{font-family:var(--f-display);font-size:16px;display:block}
+.source span{font-size:12.5px;color:var(--muted)}
+.brand{background:none;border:0;padding:0;text-align:left}
 
 /* Speelveld */
 .play{display:grid;grid-template-columns:minmax(0,600px) minmax(260px,320px);gap:24px;align-items:start;justify-content:center}
@@ -209,7 +243,7 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><div class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><h1>Sudoku Schrift</h1></div>
+    <button class="brand" type="button" id="btnHome" aria-label="Naar de openingspagina"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><h1>Sudoku Schrift</h1></button>
     <button class="btn" id="btnList" type="button"></button>
     <button class="btn ghost" id="btnKey" type="button" aria-label="Instellingen voor fotoherkenning"></button>
     <button class="btn primary" id="btnPhoto" type="button"></button>
@@ -300,7 +334,7 @@ function findHint(givens,current,solution){
 const EXAMPLE={id:"voorbeeld-49",title:"Sudoku 49",stars:7,difficultyText:"7 sterren",source:"Voorbeeld uit je puzzelboek",
   givens:"392100000010080000005006000100908000000000060079340000000004702423000105000000000"};
 const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
-const S={puzzles:new Map(),view:"list",filter:"all",cur:null,sel:-1,mode:"num",undo:[],redo:[],
+const S={puzzles:new Map(),view:"home",filter:"all",cur:null,sel:-1,mode:"num",undo:[],redo:[],
   settings:Object.assign({same:true,peers:true,live:false,autonotes:true},ls.get("sudoku-settings",{})),
   hint:null,msg:null,review:null};
 function decodeNotes(s){const a=new Array(81).fill(0);if(typeof s==="string")for(let i=0;i<81;i++)a[i]=parseInt(s.substr(i*3,3),16)||0;return a}
@@ -375,19 +409,84 @@ const main=$("#main");
 function render(){
   $("#btnList").innerHTML=I.list+"<span>Verzameling</span>";
   $("#btnPhoto").innerHTML=I.camera+"<span>Foto van sudoku</span>";
-  $("#btnList").hidden=S.view==="list";
+  $("#btnList").hidden=S.view==="list"||S.view==="home";
   $("#btnKey").innerHTML=I.gear;
-  if(S.view==="list")renderList();else if(S.view==="play")renderPlay();else if(S.view==="review")renderReview();
+  if(S.view==="home")renderHome();else if(S.view==="list")renderList();else if(S.view==="play")renderPlay();else if(S.view==="review")renderReview();
 }
 function starsHTML(p){if(!p.stars&&!p.difficultyText)return"";const lbl=p.stars?`${p.stars} ${p.stars===1?"ster":"sterren"}`:p.difficultyText;
   return`<span class="stars" title="Moeilijkheid: ${esc(p.difficultyText||lbl)}">${I.star}${p.stars?p.stars:esc(p.difficultyText)}<span class="sr"> ${esc(lbl)}</span></span>`}
 function progress(p){const empty=p.givens.filter(v=>!v).length;if(!empty)return 1;let f=0;for(let i=0;i<81;i++)if(!p.givens[i]&&p.entries[i])f++;return f/empty}
 function miniHTML(p){let h="";for(let i=0;i<81;i++){const g=p.givens[i],e=p.entries[i];const cls=(COL(i)%3===2&&COL(i)<8?" bR":"")+(ROW(i)%3===2&&ROW(i)<8?" bB":"");h+=`<span class="${g?"":"e"}${cls}">${g||e||""}</span>`}return`<div class="mini" aria-hidden="true">${h}</div>`}
+/* ---------- puzzels maken ---------- */
+const LEVELS=[
+  {key:"easy",name:"Makkelijk",stars:1,givens:40,desc:"Veel cijfers gegeven. Goed om rustig te beginnen."},
+  {key:"medium",name:"Gemiddeld",stars:2,givens:33,desc:"Iets minder hulp. Je moet goed kijken."},
+  {key:"hard",name:"Moeilijk",stars:3,givens:27,desc:"Weinig cijfers. Hoek- en middencijfers helpen."},
+  {key:"expert",name:"Expert",stars:4,givens:0,desc:"Alleen op te lossen met slimme trucs."}];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function fullGrid(){const g=Array(81).fill(0);
+  (function fill(i){if(i===81)return true;if(g[i])return fill(i+1);
+    let m=0b1111111110;for(const q of PEERS[i])if(g[q])m&=~(1<<g[q]);
+    for(const d of shuffle(bits(m))){g[i]=d;if(fill(i+1))return true}g[i]=0;return false})(0);return g}
+/* Lost op met alleen 'enige plek' en 'enige cijfer'; true als dat lukt. */
+function singlesSolve(g0){const g=g0.slice();
+  for(;;){if(g.every(Boolean))return true;const C=cands(g);let moved=false;
+    for(let i=0;i<81;i++)if(!g[i]){if(!C[i])return false;if(pop(C[i])===1){g[i]=bits(C[i])[0];moved=true}}
+    if(moved)continue;
+    for(const h of HOUSES)for(let d=1;d<=9;d++){if(h.cells.some(i=>g[i]===d))continue;const pos=h.cells.filter(i=>!g[i]&&C[i]&(1<<d));if(pos.length===1){g[pos[0]]=d;moved=true}}
+    if(!moved)return false}}
+function makePuzzle(level){
+  for(let attempt=0;attempt<12;attempt++){
+    const sol=fullGrid(),g=sol.slice();
+    for(const i of shuffle([...Array(81).keys()])){
+      if(level.givens&&g.filter(Boolean).length<=level.givens)break;
+      const keep=g[i];g[i]=0;
+      if(solve(g,2).count!==1||(level.key!=="expert"&&!singlesSolve(g)))g[i]=keep;
+    }
+    const ok=level.key==="expert"?!singlesSolve(g):singlesSolve(g);
+    if(ok||attempt===11)return g;
+  }}
+function newPuzzle(key,btn){
+  const level=LEVELS.find(l=>l.key===key);if(!level)return;
+  if(btn){btn.setAttribute("aria-busy","true");btn.querySelector(".d").textContent="Puzzel maken…"}
+  setTimeout(()=>{
+    const g=makePuzzle(level);
+    const n=[...S.puzzles.values()].filter(p=>p.source==="Gemaakt door de app"&&p.difficultyText===level.name).length+1;
+    const p=normalize({id:uid(),title:`${level.name} ${n}`,stars:level.stars,difficultyText:level.name,source:"Gemaakt door de app",givens:toStr(g)});
+    S.puzzles.set(p.id,p);persist(p,true);openPuzzle(p);window.scrollTo(0,0);
+  },30);
+}
+function starRow(n,max=4){let h="";for(let k=1;k<=max;k++)h+=I.star.replace("<svg",`<svg class="${k<=n?"":"off"}" aria-hidden="true"`);return`<span class="row-stars" title="${n} van ${max} sterren">${h}</span>`}
+function renderHome(){
+  const all=[...S.puzzles.values()].sort((a,b)=>b.updated-a.updated);
+  const busy=all.find(p=>!p.solvedAt&&progress(p)>0)||all.find(p=>!p.solvedAt);
+  const hour=new Date().getHours();
+  const hello=hour<12?"Goedemorgen":hour<18?"Goedemiddag":"Goedenavond";
+  const solved=all.filter(p=>p.solvedAt).length;
+  let h=`<div class="home">
+    <div class="home-hello"><h2>${hello}! Welke puzzel wil je spelen?</h2><p>${all.length?`${all.length} ${all.length===1?"puzzel":"puzzels"} in je verzameling, ${solved} opgelost.`:"Kies een nieuwe puzzel, of maak een foto van een sudoku uit een boekje of app."}</p></div>`;
+  if(busy){const pr=progress(busy);
+    h+=`<section><div class="sec-title"><h3>Verder spelen</h3></div>
+      <button class="continue" type="button" data-open="${esc(busy.id)}">${miniHTML(busy)}
+        <span class="info"><span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h4>${esc(busy.title)}</h4>${starsHTML(busy)}</span>
+        <span class="bar" aria-hidden="true"><i style="width:${pr*100}%"></i></span>
+        <span class="notice">${Math.round(pr*100)}% ingevuld · ${fmtTime(busy.seconds)} gespeeld</span>
+        <span class="btn primary go">Verder</span></span></button></section>`}
+  h+=`<section><div class="sec-title"><h3>Nieuwe puzzel</h3></div><div class="levels">${LEVELS.map(l=>`<button class="level" type="button" data-level="${l.key}">${starRow(l.stars)}<b>${l.name}</b><span class="d">${l.desc}</span></button>`).join("")}</div></section>
+    <section><div class="sec-title"><h3>Van papier of scherm</h3></div><div class="sources">
+      <button class="source" type="button" data-act="photo">${I.camera}<span><b>Foto van sudoku</b><span>Uit een boekje, krant of app. Vraag een hint of bewaar hem.</span></span></button>
+      <button class="source" type="button" data-act="manual">${I.grid}<span><b>Zelf overtypen</b><span>Typ de cijfers over en speel verder op dit scherm.</span></span></button>
+    </div></section>`;
+  const recent=all.filter(p=>p!==busy).slice(0,4);
+  if(recent.length)h+=`<section><div class="sec-title"><h3>Uit je verzameling</h3><button class="linkbtn" type="button" data-act="list">Alles bekijken (${all.length})</button></div><div class="cards">${recent.map(p=>cardHTML(p)).join("")}</div></section>`;
+  else if(!all.length)h+=`<section><div class="sec-title"><h3>Probeer alvast</h3></div><div class="cards">${cardHTML(normalize(EXAMPLE),true)}</div></section>`;
+  main.innerHTML=h+"</div>";
+}
 function renderList(){
   const all=[...S.puzzles.values()].sort((a,b)=>b.updated-a.updated);
   const list=all.filter(p=>S.filter==="all"||(S.filter==="solved"?p.solvedAt:!p.solvedAt));
   const f=(k,l)=>`<button class="chip" type="button" data-filter="${k}" aria-pressed="${S.filter===k}">${l}</button>`;
-  let h=`<div class="list-head"><h2>Mijn verzameling <span class="notice">(${all.length})</span></h2><div class="tabs">${f("all","Alle")}${f("busy","Bezig")}${f("solved","Opgelost")}</div></div>`;
+  let h=`<button class="linkbtn" type="button" data-act="home" style="padding-left:0">← Terug naar start</button><div class="list-head"><h2>Mijn verzameling <span class="notice">(${all.length})</span></h2><div class="tabs">${f("all","Alle")}${f("busy","Bezig")}${f("solved","Opgelost")}</div></div>`;
   if(!all.length){
     const ex=normalize(EXAMPLE);
     h+=`<div class="empty"><h3>Nog geen sudoku's in je verzameling</h3><p class="notice">Maak een foto van een sudoku uit een boekje, krant of app. Kies daarna <b>Digitaliseren</b> om hem hier te bewaren en te spelen, of <b>Hint</b> als je alleen een duwtje in de goede richting wilt.</p>
@@ -707,7 +806,7 @@ function celebrate(p){
   const H=p.hints?` met ${p.hints} hint${p.hints>1?"s":""}`:" zonder hints";
   sheet(`<div class="trophy">${I.trophy}</div><h2>Gefeliciteerd!</h2>
     <p>Je hebt <b>${esc(p.title)}</b> opgelost in <b>${fmtTime(p.seconds)}</b>${H}.</p>${p.stars||p.difficultyText?`<p class="big-stars">${starsHTML(p)} ${p.stars>=6?"Een echte moeilijke, top!":""}</p>`:""}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn primary" type="button" data-act="list">Naar verzameling</button><button class="btn" type="button" data-act="close">Bekijk de puzzel</button></div>`,"party");
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn primary" type="button" data-act="home">Nieuwe puzzel kiezen</button><button class="btn" type="button" data-act="list">Naar verzameling</button><button class="btn" type="button" data-act="close">Bekijk de puzzel</button></div>`,"party");
   confetti();
 }
 function confetti(){
@@ -728,6 +827,8 @@ document.addEventListener("click",e=>{
   if(t.dataset.act==="closebg"&&e.target!==t)return;
   if(t.id==="btnList"){goList();return}
   if(t.id==="btnPhoto"){openPhotoSheet();return}
+  if(t.id==="btnHome"){goHome();return}
+  if(t.dataset.level){newPuzzle(t.dataset.level,t);return}
   if(t.id==="btnKey"){openKeySheet();return}
   if(t.dataset.filter){S.filter=t.dataset.filter;render();return}
   if(t.dataset.open){let p=S.puzzles.get(t.dataset.open);
@@ -747,6 +848,7 @@ document.addEventListener("click",e=>{
     case"read-hint":readHint();break;
     case"read-digi":readPhoto("digi");break;
     case"list":closeSheet();goList();break;
+    case"home":goHome();break;
     case"erase":input(0);break;
     case"undo":if(S.undo.length){S.redo.push(snapshot());restore(S.undo.pop());after(true)}break;
     case"redo":if(S.redo.length){S.undo.push(snapshot());restore(S.redo.pop());after(true)}break;
@@ -794,6 +896,7 @@ document.addEventListener("keydown",e=>{
   if(inPlay&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();document.querySelector(`[data-act="${e.shiftKey?"redo":"undo"}"]`)?.click();return}
   if(inPlay&&e.key.toLowerCase()==="n"){S.mode={num:"corner",corner:"center",center:"num",color:"num"}[S.mode];render()}
 });
+function goHome(){closeSheet();if(S.cur)persist(S.cur,true);S.view="home";S.cur=null;S.review=null;S.hint=null;render();window.scrollTo(0,0)}
 function goList(){if(S.cur)persist(S.cur,true);S.view="list";S.cur=null;S.review=null;S.hint=null;render();window.scrollTo(0,0)}
 
 function readHint(){readPhoto("hint").then(()=>{if(S.view==="review"&&S.review&&S.review.mode==="hint"){reviewHint();renderReview()}})}
