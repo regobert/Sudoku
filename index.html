@@ -117,9 +117,11 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .continue h4{margin:0;font-family:var(--f-display);font-size:20px}
 .continue .go{align-self:flex-start;margin-top:4px}
 @media (max-width:480px){.continue{grid-template-columns:96px minmax(0,1fr);gap:12px}}
-.levels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
-@media (max-width:860px){.levels{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:560px){.levels{grid-template-columns:repeat(2,minmax(0,1fr))}.level:last-child:nth-child(odd){grid-column:1 / -1}}
+.levels{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+@media (max-width:1000px){.levels{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.levels{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.lvstars{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-display);font-weight:700;font-size:20px;color:var(--star)}
+.lvstars svg{width:20px;height:20px;fill:var(--star)}
 .level{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:6px;min-width:0}
 .level:hover{border-color:var(--accent)}
 .level b{font-family:var(--f-display);font-size:18px}
@@ -421,10 +423,13 @@ function decodeNotes(s){const a=new Array(81).fill(0);if(typeof s==="string")for
 const encodeNotes=a=>a.map(n=>n.toString(16).padStart(3,"0")).join("");
 const toArr=s=>[...String(s||"").padEnd(81,".")].slice(0,81).map(c=>/[1-9]/.test(c)?+c:0);
 const toStr=a=>a.map(v=>v||".").join("");
-function normalize(p){return{id:p.id,title:p.title||"Sudoku",created:p.created||Date.now(),updated:p.updated||Date.now(),stars:p.stars??null,difficultyText:p.difficultyText||"",source:p.source||"",
+function normalize(p){
+  let stars=p.stars??null;
+  if(p.source==="Gemaakt door de app"&&!p.scale&&stars&&OLD_APP_STARS[stars])stars=OLD_APP_STARS[stars];
+  return{scale:"boek",id:p.id,title:p.title||"Sudoku",created:p.created||Date.now(),updated:p.updated||Date.now(),stars,difficultyText:p.difficultyText||"",source:p.source||"",
   givens:toArr(p.givens),entries:toArr(p.entries),notes:decodeNotes(p.notes),centers:decodeNotes(p.centers),colors:String(p.colors||"").padEnd(81,"0").slice(0,81).split("").map(Number),
   seconds:p.seconds||0,solvedAt:p.solvedAt||null,hints:p.hints||0,solution:null}}
-function serialize(p){return{type:"sudoku",id:p.id,title:p.title,created:p.created,updated:p.updated,stars:p.stars,difficultyText:p.difficultyText,source:p.source,
+function serialize(p){return{type:"sudoku",scale:"boek",id:p.id,title:p.title,created:p.created,updated:p.updated,stars:p.stars,difficultyText:p.difficultyText,source:p.source,
   givens:toStr(p.givens),entries:toStr(p.entries),notes:encodeNotes(p.notes),centers:encodeNotes(p.centers),colors:p.colors.join(""),seconds:Math.floor(p.seconds),solvedAt:p.solvedAt,hints:p.hints}}
 function persist(p){p.updated=Date.now();const all=ls.get("sudoku-collection",{});all[p.id]=serialize(p);
   try{localStorage.setItem("sudoku-collection",JSON.stringify(all))}catch{note("Opslaan in deze browser lukte niet. Misschien is de opslag vol of staat privé-browsen aan.",true)}}
@@ -521,12 +526,18 @@ function installCard(){
 }
 
 /* ---------- puzzels maken ---------- */
+/* Niveaus op de sterrenschaal van puzzelboeken (vaak 5 tot 13 sterren).
+   Geijkt op een 7-sterrenpuzzel uit een boekje: 24 cijfers, niet op te lossen met alleen
+   'enige plek/enige cijfer', ongeveer 500 zoekstappen. */
 const LEVELS=[
-  {key:"easy",name:"Makkelijk",stars:1,givens:40,desc:"Veel cijfers gegeven. Goed om rustig te beginnen."},
-  {key:"medium",name:"Gemiddeld",stars:2,givens:33,desc:"Iets minder hulp. Je moet goed kijken."},
-  {key:"hard",name:"Moeilijk",stars:3,givens:27,desc:"Weinig cijfers. Hoek- en middencijfers helpen."},
-  {key:"expert",name:"Expert",stars:4,givens:0,desc:"Alleen op te lossen met slimme trucs."},
-  {key:"master",name:"Meester",stars:5,givens:0,desc:"De zwaarste puzzels van de app, voor echte doorzetters."}];
+  {key:"s3",name:"Makkelijk",stars:3,givens:38,singles:true,desc:"Veel cijfers gegeven. Rustig beginnen."},
+  {key:"s5",name:"Gemiddeld",stars:5,givens:28,singles:true,desc:"Steeds zoeken waar een cijfer nog maar op één plek kan."},
+  {key:"s7",name:"Moeilijk",stars:7,givens:0,singles:false,minSteps:250,maxSteps:1500,tries:12,desc:"Zoals de 7 sterren in je boekje. Hoek- en middencijfers helpen."},
+  {key:"s9",name:"Zeer moeilijk",stars:9,givens:0,singles:false,minSteps:1500,tries:20,desc:"Veel kandidaten bijhouden en vooruit denken."},
+  {key:"s11",name:"Expert",stars:11,givens:0,singles:false,minSteps:4000,tries:90,desc:"Alleen met slimme trucs en geduld."},
+  {key:"s13",name:"Meester",stars:13,givens:0,singles:false,minSteps:9000,tries:220,desc:"De zwaarste puzzels van de app."}];
+/* Oude app-niveaus (1-5 sterren) omzetten naar de boekenschaal. */
+const OLD_APP_STARS={1:3,2:4,3:5,4:7,5:9};
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function fullGrid(){const g=Array(81).fill(0);
   (function fill(i){if(i===81)return true;if(g[i])return fill(i+1);
@@ -540,33 +551,36 @@ function singlesSolve(g0){const g=g0.slice();
     for(const h of HOUSES)for(let d=1;d<=9;d++){if(h.cells.some(i=>g[i]===d))continue;const pos=h.cells.filter(i=>!g[i]&&C[i]&(1<<d));if(pos.length===1){g[pos[0]]=d;moved=true}}
     if(!moved)return false}}
 function carve(level){
-  const sol=fullGrid(),g=sol.slice(),hardMode=level.stars>=4;
+  const sol=fullGrid(),g=sol.slice();
   for(const i of shuffle([...Array(81).keys()])){
     if(level.givens&&g.filter(Boolean).length<=level.givens)break;
     const keep=g[i];g[i]=0;
-    if(solve(g,2).count!==1||(!hardMode&&!singlesSolve(g)))g[i]=keep;
+    if(solve(g,2).count!==1||(level.singles&&!singlesSolve(g)))g[i]=keep;
   }
   return g;
 }
-/* 1-3 sterren: op te lossen met 'enige plek/enige cijfer'. 4: daar niet mee op te lossen.
-   5: idem, en van meerdere pogingen de puzzel met de meeste zoekstappen. */
+/* Makkelijk/Gemiddeld: op te lossen met 'enige plek/enige cijfer'.
+   Vanaf 7 sterren: daar niet mee op te lossen, en zwaarder naarmate de zoekmachine
+   meer stappen nodig heeft (van meerdere pogingen houden we de best passende). */
 function makePuzzle(level){
-  if(level.stars<=3){for(let t=0;t<12;t++){const g=carve(level);if(singlesSolve(g)||t===11)return g}}
-  const tries=level.stars>=5?8:1;let best=null,bestSteps=-1;
-  for(let t=0;t<30&&(best===null||t<tries);t++){
+  if(level.singles){for(let t=0;t<12;t++){const g=carve(level);if(singlesSolve(g)||t===11)return g}}
+  const t0=Date.now();let best=null,bestDist=Infinity;
+  for(let t=0;t<level.tries&&Date.now()-t0<6000;t++){
     const g=carve(level);if(singlesSolve(g))continue;
-    const st=solve(g,2).steps;if(st>bestSteps){best=g;bestSteps=st}
-    if(level.stars<5)break;
+    const st=solve(g,2).steps;
+    const dist=st<level.minSteps?level.minSteps-st:(level.maxSteps&&st>level.maxSteps?st-level.maxSteps:0);
+    if(dist<bestDist){best=g;bestDist=dist}
+    if(dist===0)break;
   }
   return best||carve(level);
 }
 function newPuzzle(key,btn){
   const level=LEVELS.find(l=>l.key===key);if(!level)return;
-  if(btn){btn.setAttribute("aria-busy","true");btn.querySelector(".d").textContent="Puzzel maken…"}
+  if(btn){btn.setAttribute("aria-busy","true");btn.querySelector(".d").textContent=level.stars>=9?"Puzzel maken… dit kan een paar seconden duren.":"Puzzel maken…"}
   setTimeout(()=>{
     const g=makePuzzle(level);
     const n=[...S.puzzles.values()].filter(p=>p.source==="Gemaakt door de app"&&p.difficultyText===level.name).length+1;
-    const p=normalize({id:uid(),title:`${level.name} ${n}`,stars:level.stars,difficultyText:level.name,source:"Gemaakt door de app",givens:toStr(g)});
+    const p=normalize({scale:"boek",id:uid(),title:`${level.name} ${n}`,stars:level.stars,difficultyText:level.name,source:"Gemaakt door de app",givens:toStr(g)});
     S.puzzles.set(p.id,p);persist(p,true);openPuzzle(p);window.scrollTo(0,0);
   },30);
 }
@@ -590,7 +604,7 @@ function renderHome(){
     <div class="acts"><button class="btn primary" type="button" data-act="quickhint">${I.camera}Hint met foto</button><button class="btn" type="button" data-act="quickhint-up" title="Kies een bestaande foto of schermafbeelding">${I.upload}Uit fotorol</button></div>
     <p class="notice" style="grid-column:1 / -1;margin:0">Wil je de puzzel bewaren of hier verder spelen? <button class="linkbtn" type="button" data-act="camera">Foto maken</button> of <button class="linkbtn" type="button" data-act="upload">foto uploaden</button> en kies Digitaliseren.</p></section>`;
   h=h.replace('</p></div>','</p></div>'+installCard()+photoHero);
-  h+=`<section><div class="sec-title"><h3>Nieuwe puzzel</h3></div><div class="levels">${LEVELS.map(l=>`<button class="level" type="button" data-level="${l.key}">${starRow(l.stars)}<b>${l.name}</b><span class="d">${l.desc}</span></button>`).join("")}</div></section>
+  h+=`<section><div class="sec-title"><h3>Nieuwe puzzel</h3></div><div class="levels">${LEVELS.map(l=>`<button class="level" type="button" data-level="${l.key}"><span class="lvstars">${I.star}${l.stars}<span class="sr"> sterren</span></span><b>${l.name}</b><span class="d">${l.desc}</span></button>`).join("")}</div></section>
     <p class="notice" style="margin-top:-14px">Geen foto bij de hand? <button class="linkbtn" type="button" data-act="manual">Typ een puzzel zelf over</button></p>`;
   if(all.length){const list=filtered(all,false),shown=list.slice(0,8);
     h+=`<section><div class="sec-title"><h3>Mijn puzzels</h3><span><button class="linkbtn" type="button" data-act="backup">Back-up</button> · <button class="linkbtn" type="button" data-act="list">Alles bekijken (${all.length})</button></span></div>
