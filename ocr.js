@@ -210,6 +210,42 @@
     return cells;
   }
 
+  /* Thermometers zoeken: lichte (grijze/gekleurde) vlakken die geen cijfer en geen rasterlijn zijn.
+     Een bolletje vult het midden van een vakje; een verbinding loopt over de rand tussen twee vakjes. */
+  function detectThermos(warped) {
+    const g = grayOf(warped, SIZE * SIZE);
+    const sorted = Float32Array.from(g).sort(), bg = sorted[Math.floor(sorted.length * 0.6)];
+    const mid = (i) => { const v = g[i]; return v < bg - 16 && v > bg - 120; };          // lichte vulling
+    const dark = (i) => g[i] <= bg - 120;                                                  // cijfers, dikke lijnen
+    const frac = (cx, cy, rw, rh) => {                                                     // aandeel lichte vulling in een rechthoek
+      let m = 0, n = 0;
+      for (let y = Math.round(cy - rh); y <= Math.round(cy + rh); y++) for (let x = Math.round(cx - rw); x <= Math.round(cx + rw); x++) {
+        if (x < 0 || y < 0 || x >= SIZE || y >= SIZE) continue; const i = y * SIZE + x; if (dark(i)) continue; n++; if (mid(i)) m++;
+      }
+      return n ? m / n : 0;
+    };
+    const ctr = (i) => [(i % 9 + 0.5) * CELL, (Math.floor(i / 9) + 0.5) * CELL];
+    const bulb = new Set();
+    for (let i = 0; i < 81; i++) { const [x, y] = ctr(i); if (frac(x, y, CELL * 0.24, CELL * 0.24) > 0.6 && frac(x, y - CELL * 0.27, CELL * 0.07, CELL * 0.03) > 0.5 && frac(x - CELL * 0.27, y, CELL * 0.03, CELL * 0.07) > 0.5) bulb.add(i); }
+    const adj = new Map(), link = (a, b) => { (adj.get(a) || adj.set(a, []).get(a)).push(b); (adj.get(b) || adj.set(b, []).get(b)).push(a); };
+    for (let i = 0; i < 81; i++) {
+      const r = Math.floor(i / 9), c = i % 9, [x, y] = ctr(i);
+      if (c < 8 && frac(x + CELL / 2, y, CELL * 0.12, CELL * 0.06) > 0.6 && frac(x + CELL / 2, y - CELL * 0.3, CELL * 0.1, CELL * 0.08) < 0.3) link(i, i + 1);
+      if (r < 8 && frac(x, y + CELL / 2, CELL * 0.06, CELL * 0.12) > 0.6 && frac(x - CELL * 0.3, y + CELL / 2, CELL * 0.08, CELL * 0.1) < 0.3) link(i, i + 9);
+    }
+    const thermos = [];
+    for (const b of bulb) {
+      if (!adj.has(b)) continue;
+      const walk = (path) => {                                                              // elk pad van bolletje tot uiteinde
+        const last = path[path.length - 1], next = (adj.get(last) || []).filter((n) => !path.includes(n) && !bulb.has(n));
+        if (!next.length) { if (path.length >= 2) thermos.push(path); return; }
+        next.forEach((n) => walk(path.concat(n)));
+      };
+      walk([b]);
+    }
+    return thermos;
+  }
+
   async function readOnce(blob, opts = {}) {
     const onProgress = opts.onProgress || (() => {});
     onProgress("Raster zoeken…", 0.02);
@@ -253,7 +289,9 @@
     }
     const rows = [], krows = [];
     for (let r = 0; r < 9; r++) { rows.push(digits.slice(r * 9, r * 9 + 9).join("")); krows.push(kinds.slice(r * 9, r * 9 + 9).join("")); }
-    return { found: true, rows, kinds: krows, unsure, filled: filled.length, stars: null, difficultyText: null, title: null, engine: "free" };
+    let thermos = [];
+    try { thermos = detectThermos(warped); } catch (e) { thermos = []; }
+    return { found: true, rows, kinds: krows, unsure, thermos, filled: filled.length, stars: null, difficultyText: null, title: null, engine: "free" };
   }
 
   /* Leest de foto; is bijna alles onzeker, dan staat de foto waarschijnlijk scheef

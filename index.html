@@ -1040,7 +1040,7 @@ async function readPhotoFree(mode){
     if(stop)return;
     if(!r.found){sheet(`<h2>Geen raster gevonden</h2><p>De gratis herkenning vindt geen sudoku-raster op deze foto. Maak de foto recht van boven, met het hele raster goed in beeld en zonder schaduw.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${mode==="hint"?"quickhint":"camera"}">Nieuwe foto</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Sluiten</button></div>`);return}
     const digits=toArr(r.rows.join("")),kinds=r.kinds.join(""),kind=digits.map((v,i)=>v?(kinds[i]==="H"?"H":"P"):"");
-    S.review={mode,engine:"free",unsure:new Set(r.unsure),thermos:[],cages:[],digits,kind,stars:null,difficultyText:"",
+    S.review={mode,engine:"free",unsure:new Set(r.unsure),thermos:Array.isArray(r.thermos)?r.thermos:[],autoThermos:(r.thermos||[]).length,cages:[],digits,kind,stars:null,difficultyText:"",
       title:"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),photo:photo.url,hintState:null,sel:-1};
     closeSheet();S.view="review";S.sel=-1;render();if(mode==="hint"){reviewHint();renderReview()}window.scrollTo(0,0);
   }catch(e){
@@ -1074,7 +1074,7 @@ function renderReview(){
   const thEditor=`<div class="thermo-edit">
     ${R.drawing?`<div class="msg info">Tik de vakjes van de thermometer aan, te beginnen bij het bolletje. ${R.drawing.length?`${R.drawing.length} vakje${R.drawing.length>1?"s":""} gekozen.`:""}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="th-done" ${R.drawing.length<2?"disabled":""}>Thermometer klaar</button><button class="btn" type="button" data-act="th-back" ${R.drawing.length?"":"disabled"}>Vakje terug</button><button class="btn ghost" type="button" data-act="th-cancel">Stoppen</button></div>`
-    :`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="notice">${(R.thermos||[]).length?`${R.thermos.length} thermometer${R.thermos.length>1?"s":""}`:"Thermosudoku?"}</span><button class="btn" type="button" data-act="th-start">Thermometer tekenen</button>${(R.thermos||[]).length?`<button class="btn ghost" type="button" data-act="th-undo">Laatste wissen</button>`:""}</div>`}</div>`;
+    :`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="notice">${(R.thermos||[]).length?`${R.thermos.length} thermometer${R.thermos.length>1?"s":""}`:"Thermosudoku?"}</span><button class="btn" type="button" data-act="th-start">Thermometer tekenen</button>${(R.thermos||[]).length?`<button class="btn ghost" type="button" data-act="th-undo">Laatste wissen</button><button class="btn ghost" type="button" data-act="th-clear">Alle wissen</button>`:""}</div>`}</div>`;
   const savedSel=S.sel;S.sel=R.sel;const savedHint=S.hint;
   if(R.mode==="hint"&&R.hintState)S.hint=R.hintState;else S.hint=null;
   const prevLive=S.settings.live;S.settings.live=true;
@@ -1105,7 +1105,7 @@ function renderReview(){
       ${R.drawing?thEditor:R.cageDrawing?cgEditor:thEditor+cgEditor}
       ${R.photo?`<img class="photo-ref" src="${R.photo}" alt="Je foto ter vergelijking">`:""}
       <div class="msg ${st.kind}">${esc(st.text)}</div>
-      ${R.engine==="free"?`<p class="notice" style="margin:0">Gelezen met de gratis herkenning. Vergelijk de cijfers met je foto${R.unsure&&R.unsure.size?`; ${R.unsure.size} ${R.unsure.size===1?"twijfelgeval is":"twijfelgevallen zijn"} oranje omrand`:""}.${R.mode!=="hint"?" Sterren vul je zelf in.":""}</p>`:""}
+      ${R.engine==="free"?`<p class="notice" style="margin:0">Gelezen met de gratis herkenning. ${R.autoThermos?`${R.autoThermos} thermometer${R.autoThermos>1?"s":""} automatisch gevonden. `:""}Vergelijk de cijfers${R.autoThermos?" en thermometers":""} met je foto${R.unsure&&R.unsure.size?`; ${R.unsure.size} ${R.unsure.size===1?"twijfelgeval is":"twijfelgevallen zijn"} oranje omrand`:""}.${R.mode!=="hint"?" Sterren vul je zelf in.":""}</p>`:""}
       <div class="padgrid" style="grid-template-columns:repeat(3,1fr)">${keys}
         <button type="button" class="tool" data-act="rkind" style="aspect-ratio:auto;height:54px">${I.pencil}<span>Gedrukt / zelf</span></button>
         <button type="button" class="tool" data-act="rerase" style="aspect-ratio:auto;height:54px">${I.erase}<span>Wissen</span></button>
@@ -1324,6 +1324,7 @@ document.addEventListener("click",e=>{
     case"th-back":S.review.drawing?.pop();renderReview();break;
     case"th-cancel":S.review.drawing=null;renderReview();break;
     case"th-done":{const R=S.review;if(R.drawing&&R.drawing.length>=2){R.thermos=[...(R.thermos||[]),R.drawing]}R.drawing=null;if(R.mode==="hint")reviewHint();renderReview();break}
+    case"th-clear":{const R=S.review;R.thermos=[];R.autoThermos=0;if(R.mode==="hint")reviewHint();renderReview();break}
     case"th-undo":{const R=S.review;R.thermos=(R.thermos||[]).slice(0,-1);if(R.mode==="hint")reviewHint();renderReview();break}
     case"savedigi":saveDigitized();break;
     case"key":openKeySheet();break;
