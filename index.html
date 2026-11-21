@@ -116,9 +116,13 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .cell.wrong::after{content:"";position:absolute;inset:auto 18% 10% 18%;height:2px;background:var(--bad);border-radius:2px}
 .cell.conflict{box-shadow:inset 0 0 0 2px var(--bad)}
 .cell:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
-.notes{position:absolute;inset:6%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);font-size:2.5cqw;font-weight:500;color:var(--muted);font-family:var(--f-body)}
+.notes{position:absolute;inset:4% 7%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);font-size:2.3cqw;font-weight:500;color:var(--muted);font-family:var(--f-body);line-height:1}
 .notes span{display:flex;align-items:center;justify-content:center}
-.notes span.on-same{color:var(--accent);font-weight:700}
+.notes span.c1{grid-area:1/1;justify-content:flex-start}.notes span.c2{grid-area:1/3;justify-content:flex-end}.notes span.c3{grid-area:3/1;justify-content:flex-start}.notes span.c4{grid-area:3/3;justify-content:flex-end}
+.notes span.c5{grid-area:1/2}.notes span.c6{grid-area:3/2}.notes span.c7{grid-area:2/1;justify-content:flex-start}.notes span.c8{grid-area:2/3;justify-content:flex-end}.notes span.c9{grid-area:2/2}
+.centers{position:absolute;inset:0 4%;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;font-family:var(--f-body);font-weight:600;color:var(--entry);letter-spacing:-.02em;line-height:1;text-align:center;word-break:break-all}
+.centers.n1{font-size:3cqw}.centers.n2{font-size:2.6cqw}.centers.n3{font-size:2.1cqw}
+.notes span.on-same,.centers .on-same{color:var(--accent);font-weight:800}
 
 .panel{display:flex;flex-direction:column;gap:12px}
 .toolrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -136,6 +140,13 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .mode .big{font-family:var(--f-display);font-size:26px;font-weight:700;border:2px solid currentColor;border-radius:6px;width:34px;height:34px;display:flex;align-items:center;justify-content:center}
 .mode .small{font-family:var(--f-display);font-size:11px;font-weight:700;border:2px solid currentColor;border-radius:6px;width:34px;height:34px;display:grid;grid-template-columns:1fr 1fr;place-items:center;line-height:1;padding:2px}
 .mode svg{width:30px;height:30px}
+.mode .corner{position:relative;border:2px solid currentColor;border-radius:6px;width:34px;height:34px;font-family:var(--f-display);font-size:10px;font-weight:700;line-height:1}
+.mode .corner i{position:absolute;font-style:normal}
+.mode .corner i:nth-child(1){left:3px;top:2px}.mode .corner i:nth-child(2){right:3px;top:2px}.mode .corner i:nth-child(3){left:3px;bottom:2px}
+.mode .center{border:2px solid currentColor;border-radius:6px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-size:12px;font-weight:700}
+.key.cornerkey{font-size:19px;align-items:flex-start;justify-content:flex-start;padding:7px 10px}
+.key.centerkey{font-size:19px}
+.modehelp{font-size:12.5px;color:var(--muted);margin:0}
 .wide{grid-column:1 / span 3;aspect-ratio:auto;height:56px}
 .swatch{border:2px solid var(--line);border-radius:12px;aspect-ratio:1.15}
 .swatch.none{background:var(--paper);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
@@ -290,10 +301,10 @@ const encodeNotes=a=>a.map(n=>n.toString(16).padStart(3,"0")).join("");
 const toArr=s=>[...String(s||"").padEnd(81,".")].slice(0,81).map(c=>/[1-9]/.test(c)?+c:0);
 const toStr=a=>a.map(v=>v||".").join("");
 function normalize(p){return{id:p.id,title:p.title||"Sudoku",created:p.created||Date.now(),updated:p.updated||Date.now(),stars:p.stars??null,difficultyText:p.difficultyText||"",source:p.source||"",
-  givens:toArr(p.givens),entries:toArr(p.entries),notes:decodeNotes(p.notes),colors:String(p.colors||"").padEnd(81,"0").slice(0,81).split("").map(Number),
+  givens:toArr(p.givens),entries:toArr(p.entries),notes:decodeNotes(p.notes),centers:decodeNotes(p.centers),colors:String(p.colors||"").padEnd(81,"0").slice(0,81).split("").map(Number),
   seconds:p.seconds||0,solvedAt:p.solvedAt||null,hints:p.hints||0,solution:null}}
 function serialize(p){return{type:"sudoku",id:p.id,title:p.title,created:p.created,updated:p.updated,stars:p.stars,difficultyText:p.difficultyText,source:p.source,
-  givens:toStr(p.givens),entries:toStr(p.entries),notes:encodeNotes(p.notes),colors:p.colors.join(""),seconds:Math.floor(p.seconds),solvedAt:p.solvedAt,hints:p.hints}}
+  givens:toStr(p.givens),entries:toStr(p.entries),notes:encodeNotes(p.notes),centers:encodeNotes(p.centers),colors:p.colors.join(""),seconds:Math.floor(p.seconds),solvedAt:p.solvedAt,hints:p.hints}}
 function persist(p){p.updated=Date.now();const all=ls.get("sudoku-collection",{});all[p.id]=serialize(p);
   try{localStorage.setItem("sudoku-collection",JSON.stringify(all))}catch{note("Opslaan in deze browser lukte niet. Misschien is de opslag vol of staat privé-browsen aan.",true)}}
 async function removePuzzle(id){S.puzzles.delete(id);const all=ls.get("sudoku-collection",{});delete all[id];ls.set("sudoku-collection",all)}
@@ -398,9 +409,9 @@ function openPuzzle(p){
   if(!p.solution){const r=solve(p.givens,2);p.solution=r.count===1?r.solution:null;p.unique=r.count}
   S.view="play";render();startTimer();
 }
-function snapshot(){const p=S.cur;return{e:p.entries.slice(),n:p.notes.slice(),c:p.colors.slice()}}
+function snapshot(){const p=S.cur;return{e:p.entries.slice(),n:p.notes.slice(),m:p.centers.slice(),c:p.colors.slice()}}
 function pushUndo(){S.undo.push(snapshot());if(S.undo.length>300)S.undo.shift();S.redo=[]}
-function restore(s){const p=S.cur;p.entries=s.e;p.notes=s.n;p.colors=s.c}
+function restore(s){const p=S.cur;p.entries=s.e;p.notes=s.n;p.centers=s.m;p.colors=s.c}
 function cellClasses(p,i,cur,C){
   const sel=S.sel,cls=["cell"];
   if(COL(i)%3===2&&COL(i)<8)cls.push("bR");if(ROW(i)%3===2&&ROW(i)<8)cls.push("bB");
@@ -420,8 +431,12 @@ function boardHTML(p,cur,editable=true){
   for(let i=0;i<81;i++){
     let inner="";
     if(cur[i])inner=cur[i];
-    else if(p.notes&&p.notes[i]){inner='<span class="notes">';const sv=S.sel>=0?cur[S.sel]:0;for(let d=1;d<=9;d++)inner+=`<span class="${p.notes[i]&(1<<d)&&sv===d&&S.settings.same?"on-same":""}">${p.notes[i]&(1<<d)?d:""}</span>`;inner+="</span>"}
-    const lbl=`${cellLabel(i)}${cur[i]?": "+cur[i]:": leeg"}${p.givens[i]?" (gegeven)":""}`;
+    else{
+      const sv=S.sel>=0&&S.settings.same?cur[S.sel]:0;
+      if(p.notes&&p.notes[i]){inner+='<span class="notes" aria-hidden="true">';bits(p.notes[i]).forEach((d,k)=>{inner+=`<span class="c${k+1}${d===sv?" on-same":""}">${d}</span>`});inner+="</span>"}
+      if(p.centers&&p.centers[i]){const ds=bits(p.centers[i]);inner+=`<span class="centers n${ds.length<=3?1:ds.length<=5?2:3}" aria-hidden="true">${ds.map(d=>d===sv?`<b class="on-same">${d}</b>`:d).join("")}</span>`}
+    }
+    const lbl=`${cellLabel(i)}${cur[i]?": "+cur[i]:": leeg"}${p.givens[i]?" (gegeven)":""}${!cur[i]&&p.notes?.[i]?", hoekcijfers "+bits(p.notes[i]).join(" "):""}${!cur[i]&&p.centers?.[i]?", middencijfers "+bits(p.centers[i]).join(" "):""}`;
     h+=`<button type="button" class="${cellClasses(p,i,cur,C)}" data-cell="${i}" aria-label="${lbl}" tabindex="${i===Math.max(0,S.sel)?0:-1}">${inner}</button>`;
   }
   return`<div class="boardbox"><div class="board" role="grid" aria-label="Sudoku-raster" id="board">${h}</div></div>`;
@@ -429,21 +444,26 @@ function boardHTML(p,cur,editable=true){
 function renderPlay(){
   const p=S.cur,cur=current(p);
   const counts=Array(10).fill(0);cur.forEach(v=>v&&counts[v]++);
+  const modeBtn=m=>({
+    num:`<button type="button" class="mode" data-mode="num" aria-pressed="${S.mode==="num"}" title="Cijfer invullen" aria-label="Cijfer invullen"><span class="big">9</span></button>`,
+    corner:`<button type="button" class="mode" data-mode="corner" aria-pressed="${S.mode==="corner"}" title="Hoekcijfers: waar kan een cijfer nog staan?" aria-label="Hoekcijfers"><span class="corner"><i>1</i><i>2</i><i>3</i></span></button>`,
+    center:`<button type="button" class="mode" data-mode="center" aria-pressed="${S.mode==="center"}" title="Middencijfers: welke cijfers kunnen hier nog?" aria-label="Middencijfers"><span class="center">12</span></button>`,
+    color:`<button type="button" class="mode" data-mode="color" aria-pressed="${S.mode==="color"}" title="Vakjes kleuren" aria-label="Vakjes kleuren">${I.palette}</button>`}[m]);
+  const help={num:"Tik een cijfer om het in het vakje te zetten.",corner:"Hoekcijfers: zet kleine cijfers in de hoek van de vakjes waar een cijfer nog kan staan. Zo zie je waar het maar op twee plekken kan.",center:"Middencijfers: zet in het midden de cijfers die in dit vakje nog kunnen. Staat er nog maar één, dan is dat het antwoord.",color:"Kies een kleur voor het gekozen vakje."}[S.mode];
   let pad="";
   if(S.mode==="color"){
     pad=[0,1,2,3,4,5,6].map(k=>k===0?`<button type="button" class="swatch none" data-color="0">Geen</button>`:`<button type="button" class="swatch cell k${k}" data-color="${k}" aria-label="Kleur ${k}"></button>`).join("");
-    pad=`<div class="padgrid" style="grid-template-columns:repeat(4,1fr)">${pad}</div>`;
+    pad=`<div class="padgrid" style="grid-template-columns:repeat(4,1fr)">${pad}</div><div class="padgrid" style="grid-template-columns:repeat(4,1fr)">${["num","corner","center","color"].map(m=>modeBtn(m).replace('class="mode"','class="mode" style="height:56px"')).join("")}</div>`;
   }else{
-    const keys=[1,2,3,"m1",4,5,6,"m2",7,8,9,"m3"].map(k=>{
-      if(k==="m1")return`<button type="button" class="mode" data-mode="num" aria-pressed="${S.mode==="num"}" title="Cijfers invullen"><span class="big">9</span></button>`;
-      if(k==="m2")return`<button type="button" class="mode" data-mode="note" aria-pressed="${S.mode==="note"}" title="Notities (kleine cijfers)"><span class="small"><span>1</span><span>2</span><span>3</span></span></button>`;
-      if(k==="m3")return`<button type="button" class="mode" data-mode="color" aria-pressed="${S.mode==="color"}" title="Vakjes kleuren">${I.palette}</button>`;
+    const kc=S.mode==="corner"?" cornerkey":S.mode==="center"?" centerkey":"";
+    const keys=[1,2,3,"num",4,5,6,"corner",7,8,9,"center"].map(k=>{
+      if(typeof k==="string")return modeBtn(k);
       const left=9-counts[k];
-      return`<button type="button" class="key${S.mode==="note"?" notekey":""}${left<=0?" done":""}" data-digit="${k}" aria-label="Cijfer ${k}">${k}<span class="left">${left>0?left:""}</span></button>`;
+      return`<button type="button" class="key${kc}${left<=0?" done":""}" data-digit="${k}" aria-label="Cijfer ${k}">${k}<span class="left">${left>0?left:""}</span></button>`;
     }).join("");
-    pad=`<div class="padgrid">${keys}<button type="button" class="key wide" data-act="erase" aria-label="Wissen">${I.erase.replace('<svg','<svg width="30" height="30"')}</button></div>`;
+    pad=`<div class="padgrid">${keys}<button type="button" class="key wide" data-act="erase" aria-label="Wissen">${I.erase.replace('<svg','<svg width="30" height="30"')}</button>${modeBtn("color")}</div>`;
   }
-  if(S.mode==="color")pad+=`<div class="padgrid" style="grid-template-columns:repeat(3,1fr)"><button type="button" class="mode" data-mode="num" aria-pressed="false" style="height:54px"><span class="big">9</span></button><button type="button" class="mode" data-mode="note" aria-pressed="false"><span class="small"><span>1</span><span>2</span><span>3</span></span></button><button type="button" class="mode" data-mode="color" aria-pressed="true">${I.palette}</button></div>`;
+  pad+=`<p class="modehelp">${help}</p>`;
   let hint="";
   if(S.hint){const H=S.hint;hint=`<div class="hintcard" role="status"><span class="lvl">Hint ${H.level+1} van ${H.steps.length}</span><p>${esc(H.steps[H.level])}</p>
     <div class="acts">${H.level<H.steps.length-1?`<button class="btn" type="button" data-act="hintmore">${I.bulb}Meer hulp</button>`:""}<button class="btn ghost" type="button" data-act="hintclose">Sluiten</button></div></div>`}
@@ -477,10 +497,14 @@ function input(d){
   if(S.mode==="color"){pushUndo();p.colors[i]=d;after();return}
   if(p.givens[i]||p.solvedAt)return;
   pushUndo();
-  if(S.mode==="note"&&d){if(p.entries[i])return S.undo.pop();p.notes[i]^=(1<<d)}
-  else if(!d){if(p.entries[i])p.entries[i]=0;else p.notes[i]=0}
+  if((S.mode==="corner"||S.mode==="center")&&d){if(p.entries[i])return S.undo.pop();
+    if(S.mode==="corner")p.notes[i]^=(1<<d);else p.centers[i]^=(1<<d)}
+  else if(!d){if(p.entries[i])p.entries[i]=0;
+    else if(S.mode==="corner"&&p.notes[i])p.notes[i]=0;
+    else if(S.mode==="center"&&p.centers[i])p.centers[i]=0;
+    else{p.notes[i]=0;p.centers[i]=0}}
   else{p.entries[i]=p.entries[i]===d?0:d;
-    if(p.entries[i]&&S.settings.autonotes)for(const q of PEERS[i])p.notes[q]&=~(1<<d)}
+    if(p.entries[i]&&S.settings.autonotes)for(const q of PEERS[i]){p.notes[q]&=~(1<<d);p.centers[q]&=~(1<<d)}}
   after(true);
 }
 function after(changed){
@@ -598,7 +622,7 @@ function reviewStatus(R){
 }
 function renderReview(){
   const R=S.review,st=reviewStatus(R);
-  const fake={givens:R.digits.map((v,i)=>R.kind[i]==="P"?v:0),entries:R.digits.map((v,i)=>R.kind[i]==="H"?v:0),notes:Array(81).fill(0),colors:Array(81).fill(0),solution:null};
+  const fake={givens:R.digits.map((v,i)=>R.kind[i]==="P"?v:0),entries:R.digits.map((v,i)=>R.kind[i]==="H"?v:0),notes:Array(81).fill(0),centers:Array(81).fill(0),colors:Array(81).fill(0),solution:null};
   const savedSel=S.sel;S.sel=R.sel;const savedHint=S.hint;
   if(R.mode==="hint"&&R.hintState)S.hint=R.hintState;else S.hint=null;
   const prevLive=S.settings.live;S.settings.live=true;
@@ -652,7 +676,7 @@ function saveDigitized(){
 /* ---------- instellingen & bevestigingen ---------- */
 function openSettings(){
   const row=(k,l,d)=>`<label class="setrow"><span>${l}<br><span class="notice">${d}</span></span><input type="checkbox" id="set-${k}" data-set="${k}" ${S.settings[k]?"checked":""}></label>`;
-  sheet(`<h2>Instellingen</h2>${row("same","Markeer gelijke cijfers","Licht alle vakjes met hetzelfde cijfer op.")}${row("peers","Markeer rij, kolom en blok","Toon de vakjes die bij het gekozen vakje horen.")}${row("live","Fouten meteen tonen","Een fout cijfer wordt direct rood. Uit: alleen na Controleer.")}${row("autonotes","Notities automatisch bijwerken","Haalt een cijfer uit de notities van de buren als je het invult.")}
+  sheet(`<h2>Instellingen</h2>${row("same","Markeer gelijke cijfers","Licht alle vakjes met hetzelfde cijfer op.")}${row("peers","Markeer rij, kolom en blok","Toon de vakjes die bij het gekozen vakje horen.")}${row("live","Fouten meteen tonen","Een fout cijfer wordt direct rood. Uit: alleen na Controleer.")}${row("autonotes","Notities automatisch bijwerken","Haalt een cijfer weg uit de hoek- en middencijfers in dezelfde rij, kolom en blok als je het invult.")}
   <div class="setrow"><span>Fotoherkenning<br><span class="notice">${getKey()?"API-sleutel is ingesteld.":"Nog geen API-sleutel ingesteld."}</span></span><button class="btn" type="button" data-act="key">Sleutel</button></div>
   <div class="setrow" style="border:0"><span>Puzzel verwijderen uit je verzameling</span><button class="btn danger" type="button" data-act="askdelete">Verwijderen</button></div>
   <div><button class="btn primary" type="button" data-act="close">Klaar</button></div>`)}
@@ -711,7 +735,7 @@ document.addEventListener("click",e=>{
     case"hintclose":S.hint=null;render();break;
     case"settings":openSettings();break;
     case"restart":confirmSheet("Opnieuw beginnen?","Al je ingevulde cijfers, notities en kleuren worden gewist. De tijd begint weer bij 0.","Opnieuw beginnen","dorestart");break;
-    case"dorestart":{const p=S.cur;pushUndo();p.entries.fill(0);p.notes.fill(0);p.colors.fill(0);p.seconds=0;p.solvedAt=null;p.hints=0;S.hint=null;closeSheet();after(true);break}
+    case"dorestart":{const p=S.cur;pushUndo();p.entries.fill(0);p.notes.fill(0);p.centers.fill(0);p.colors.fill(0);p.seconds=0;p.solvedAt=null;p.hints=0;S.hint=null;closeSheet();after(true);break}
     case"askdelete":confirmSheet("Puzzel verwijderen?",`“${esc(S.cur?.title)}” verdwijnt uit je verzameling. Dit kun je niet ongedaan maken.`,"Verwijderen","dodelete");break;
     case"dodelete":{const id=S.cur.id;closeSheet();S.cur=null;S.view="list";removePuzzle(id).then(render);render();break}
     case"rhintmore":{const H=S.review.hintState;if(H&&H.level<H.steps.length-1)H.level++;renderReview();break}
@@ -747,7 +771,7 @@ document.addEventListener("keydown",e=>{
   if(/^[1-9]$/.test(e.key)){e.preventDefault();inReview?reviewInput(+e.key):input(+e.key);return}
   if(e.key==="Backspace"||e.key==="Delete"||e.key==="0"){e.preventDefault();inReview?reviewInput(0):input(0);return}
   if(inPlay&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();document.querySelector(`[data-act="${e.shiftKey?"redo":"undo"}"]`)?.click();return}
-  if(inPlay&&e.key.toLowerCase()==="n"){S.mode=S.mode==="note"?"num":"note";render()}
+  if(inPlay&&e.key.toLowerCase()==="n"){S.mode={num:"corner",corner:"center",center:"num",color:"num"}[S.mode];render()}
 });
 function goList(){if(S.cur)persist(S.cur,true);S.view="list";S.cur=null;S.review=null;S.hint=null;render();window.scrollTo(0,0)}
 
