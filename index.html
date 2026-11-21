@@ -995,9 +995,10 @@ Answer with only JSON in exactly this shape:
 It may also be a killer sudoku: dashed or dotted cages with a small sum printed in a corner of the cage. If so, list every cage as {"sum":23,"cells":[[1,1],[1,2],[2,1]]} with 1-based [row, column]. The small cage sums are not cell digits: do not put them in rows.
 Add "cages":[...] to the JSON. Use "thermos":[] and "cages":[] for an ordinary sudoku.
 Use null for stars, difficultyText or title when there is none. difficultyText is a short Dutch phrase as the user would say it (e.g. "7 sterren", "Moeilijk", "Niveau 3"). If there is no sudoku in the photo, answer {"found":false}. Output only the JSON object, with no other text.`;
+const APP_VERSION="12";
 /* Welke herkenning? Claude met sleutel, anders (of op verzoek) gratis op het apparaat. */
 const useFreeOCR=()=>!getKey()||!!S.settings.freeOcr||S.freeOnce;
-function loadOCR(){return window.SudokuOCR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="ocr.js";sc.onload=()=>res();sc.onerror=()=>rej(new Error("De gratis herkenning kon niet worden geladen. Ben je verbonden met internet?"));document.head.appendChild(sc)})}
+function loadOCR(){return window.SudokuOCR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="ocr.js?v="+APP_VERSION;sc.onload=()=>res();sc.onerror=()=>rej(new Error("De gratis herkenning kon niet worden geladen. Ben je verbonden met internet?"));document.head.appendChild(sc)})}
 async function readPhoto(mode){
   const free=useFreeOCR();S.freeOnce=false;
   if(free)return readPhotoFree(mode);
@@ -1015,7 +1016,8 @@ async function readPhoto(mode){
     const stars=Number.isFinite(+r.stars)&&+r.stars>0&&+r.stars<=20?Math.round(+r.stars):null;
     const thermos=(Array.isArray(r.thermos)?r.thermos:[]).map(t=>Array.isArray(t)?t.map(c=>Array.isArray(c)?(+c[0]-1)*9+(+c[1]-1):-1).filter(i=>Number.isInteger(i)&&i>=0&&i<81):[]).filter(t=>t.length>=2);
     const cages=(Array.isArray(r.cages)?r.cages:[]).map(k=>({sum:Math.round(+k?.sum||0),cells:(Array.isArray(k?.cells)?k.cells:[]).map(c=>Array.isArray(c)?(+c[0]-1)*9+(+c[1]-1):-1).filter(i=>Number.isInteger(i)&&i>=0&&i<81)})).filter(k=>k.sum>0&&k.sum<=45&&k.cells.length);
-    S.review={mode,engine:"claude",cages,unsure:new Set(),thermos,digits,kind,stars,difficultyText:r.difficultyText?String(r.difficultyText).slice(0,40):(stars?`${stars} sterren`:""),
+    if(!thermos.length){try{await loadOCR();const found=await SudokuOCR.findThermos(photo.blob);if(found.length){thermos.push(...found);var autoTh=found.length}}catch(e){}}
+    S.review={mode,engine:"claude",autoThermos:typeof autoTh==="number"?autoTh:0,cages,unsure:new Set(),thermos,digits,kind,stars,difficultyText:r.difficultyText?String(r.difficultyText).slice(0,40):(stars?`${stars} sterren`:""),
       title:r.title?(/^\d+$/.test(String(r.title))?"Sudoku "+r.title:String(r.title).slice(0,40)):"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),
       photo:photo.url,hintState:null,sel:-1};
     closeSheet();S.view="review";S.sel=-1;render();window.scrollTo(0,0);
@@ -1074,7 +1076,7 @@ function renderReview(){
   const thEditor=`<div class="thermo-edit">
     ${R.drawing?`<div class="msg info">Tik de vakjes van de thermometer aan, te beginnen bij het bolletje. ${R.drawing.length?`${R.drawing.length} vakje${R.drawing.length>1?"s":""} gekozen.`:""}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="th-done" ${R.drawing.length<2?"disabled":""}>Thermometer klaar</button><button class="btn" type="button" data-act="th-back" ${R.drawing.length?"":"disabled"}>Vakje terug</button><button class="btn ghost" type="button" data-act="th-cancel">Stoppen</button></div>`
-    :`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="notice">${(R.thermos||[]).length?`${R.thermos.length} thermometer${R.thermos.length>1?"s":""}`:"Thermosudoku?"}</span><button class="btn" type="button" data-act="th-start">Thermometer tekenen</button>${(R.thermos||[]).length?`<button class="btn ghost" type="button" data-act="th-undo">Laatste wissen</button><button class="btn ghost" type="button" data-act="th-clear">Alle wissen</button>`:""}</div>`}</div>`;
+    :`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="notice">${(R.thermos||[]).length?`${R.thermos.length} thermometer${R.thermos.length>1?"s":""}`:"Thermosudoku?"}</span><button class="btn" type="button" data-act="th-start">Thermometer tekenen</button>${R.photo&&!(R.thermos||[]).length?`<button class="btn" type="button" data-act="th-auto">Thermometers zoeken</button>`:""}${(R.thermos||[]).length?`<button class="btn ghost" type="button" data-act="th-undo">Laatste wissen</button><button class="btn ghost" type="button" data-act="th-clear">Alle wissen</button>`:""}</div>`}</div>`;
   const savedSel=S.sel;S.sel=R.sel;const savedHint=S.hint;
   if(R.mode==="hint"&&R.hintState)S.hint=R.hintState;else S.hint=null;
   const prevLive=S.settings.live;S.settings.live=true;
@@ -1105,7 +1107,8 @@ function renderReview(){
       ${R.drawing?thEditor:R.cageDrawing?cgEditor:thEditor+cgEditor}
       ${R.photo?`<img class="photo-ref" src="${R.photo}" alt="Je foto ter vergelijking">`:""}
       <div class="msg ${st.kind}">${esc(st.text)}</div>
-      ${R.engine==="free"?`<p class="notice" style="margin:0">Gelezen met de gratis herkenning. ${R.autoThermos?`${R.autoThermos} thermometer${R.autoThermos>1?"s":""} automatisch gevonden. `:""}Vergelijk de cijfers${R.autoThermos?" en thermometers":""} met je foto${R.unsure&&R.unsure.size?`; ${R.unsure.size} ${R.unsure.size===1?"twijfelgeval is":"twijfelgevallen zijn"} oranje omrand`:""}.${R.mode!=="hint"?" Sterren vul je zelf in.":""}</p>`:""}
+      ${R.engine!=="free"&&(R.autoThermos||R.thermoSearchDone)?`<p class="notice" style="margin:0">${R.autoThermos?`${R.autoThermos} thermometer${R.autoThermos>1?"s":""} automatisch gevonden. Vergelijk ze met je foto.`:"Geen thermometers gevonden op de foto."}</p>`:""}
+      ${R.engine==="free"?`<p class="notice" style="margin:0">Gelezen met de gratis herkenning. ${R.autoThermos?`${R.autoThermos} thermometer${R.autoThermos>1?"s":""} automatisch gevonden. `:R.thermoSearchDone?"Geen thermometers gevonden op de foto. ":""}Vergelijk de cijfers${R.autoThermos?" en thermometers":""} met je foto${R.unsure&&R.unsure.size?`; ${R.unsure.size} ${R.unsure.size===1?"twijfelgeval is":"twijfelgevallen zijn"} oranje omrand`:""}.${R.mode!=="hint"?" Sterren vul je zelf in.":""}</p>`:""}
       <div class="padgrid" style="grid-template-columns:repeat(3,1fr)">${keys}
         <button type="button" class="tool" data-act="rkind" style="aspect-ratio:auto;height:54px">${I.pencil}<span>Gedrukt / zelf</span></button>
         <button type="button" class="tool" data-act="rerase" style="aspect-ratio:auto;height:54px">${I.erase}<span>Wissen</span></button>
@@ -1137,7 +1140,7 @@ function openSettings(){
   ${getKey()?`<button type="button" class="switchrow" role="switch" aria-checked="${!!S.settings.freeOcr}" data-act="free-ocr"><span>Altijd gratis herkenning<br><span class="notice">Leest foto's op dit apparaat, zonder API-tegoed te gebruiken. Minder nauwkeurig, geen sterren.</span></span><span class="track" aria-hidden="true"><span class="knob"></span></span></button>`:""}
   <div class="setrow"><span>Back-up<br><span class="notice">Zet je puzzels over naar een ander apparaat.</span></span><button class="btn" type="button" data-act="backup">Back-up</button></div>
   ${S.view==="play"&&S.cur?`<div class="setrow" style="border:0"><span>Deze puzzel verwijderen uit je verzameling</span><button class="btn danger" type="button" data-act="askdelete">Verwijderen</button></div>`:""}
-  <div><button class="btn primary" type="button" data-act="close">Klaar</button></div>`)}
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><button class="btn primary" type="button" data-act="close">Klaar</button><span class="notice">Versie ${APP_VERSION}</span></div>`)}
 /* ---------- back-up: puzzels overzetten tussen apparaten ---------- */
 function saveAll(){const all={};for(const p of S.puzzles.values())all[p.id]=serialize(p);
   try{localStorage.setItem("sudoku-collection",JSON.stringify(all));return true}catch{note("Opslaan in deze browser lukte niet. Misschien is de opslag vol.",true);return false}}
@@ -1324,6 +1327,8 @@ document.addEventListener("click",e=>{
     case"th-back":S.review.drawing?.pop();renderReview();break;
     case"th-cancel":S.review.drawing=null;renderReview();break;
     case"th-done":{const R=S.review;if(R.drawing&&R.drawing.length>=2){R.thermos=[...(R.thermos||[]),R.drawing]}R.drawing=null;if(R.mode==="hint")reviewHint();renderReview();break}
+    case"th-auto":{const R=S.review;if(!photo){break}const btn=main.querySelector('[data-act="th-auto"]');if(btn){btn.disabled=true;btn.textContent="Zoeken…"}
+      loadOCR().then(()=>SudokuOCR.findThermos(photo.blob)).then(found=>{R.thermos=found;R.autoThermos=found.length;R.thermoSearchDone=true;if(R.mode==="hint")reviewHint();renderReview()}).catch(()=>{R.thermoSearchDone=true;renderReview()});break}
     case"th-clear":{const R=S.review;R.thermos=[];R.autoThermos=0;if(R.mode==="hint")reviewHint();renderReview();break}
     case"th-undo":{const R=S.review;R.thermos=(R.thermos||[]).slice(0,-1);if(R.mode==="hint")reviewHint();renderReview();break}
     case"savedigi":saveDigitized();break;

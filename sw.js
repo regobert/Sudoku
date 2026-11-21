@@ -1,11 +1,11 @@
 /* Sudoku Schrift service worker: de app werkt ook zonder internet.
    Verhoog VERSION bij elke wijziging aan de bestanden hieronder. */
-const VERSION = "v11";
+const VERSION = "v12";
 const CACHE = "sudoku-" + VERSION;
 const SHELL = [
   "./",
   "./index.html",
-  "./ocr.js",
+  "./ocr.js?v=12",
   "./manifest.webmanifest",
   "./vendor/anthropic-sdk-1.6.0.mjs",
   "./icons/icon-192.png",
@@ -17,7 +17,8 @@ const SHELL = [
 const FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // cache: "reload" haalt elk bestand vers op, niet uit de tijdelijke opslag van de browser
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: "reload" })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (e) => {

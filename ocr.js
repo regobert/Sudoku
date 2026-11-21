@@ -319,5 +319,16 @@
     return new Promise((r) => c.toBlob((b) => r(b || blob), "image/jpeg", 0.92));
   }
 
-  window.SudokuOCR = { read, rotate, preload: () => getWorker() };
+  /* Alleen thermometers zoeken (snel, zonder cijfers te lezen). */
+  async function findThermos(blob) {
+    const cv = await toCanvas(blob), w = cv.width, h = cv.height;
+    const rgba = cv.getContext("2d").getImageData(0, 0, w, h).data;
+    const g = grayOf(rgba, w * h), bin = adaptive(g, w, h, Math.max(8, Math.round(Math.min(w, h) / 60)), 10);
+    const corners = findGrid(bin, w, h);
+    if (!corners) return [];
+    const warped = warp(rgba, w, h, homography(corners, [[0, 0], [SIZE, 0], [SIZE, SIZE], [0, SIZE]]));
+    return detectThermos(warped);
+  }
+
+  window.SudokuOCR = { read, rotate, findThermos, preload: () => getWorker() };
 })();
