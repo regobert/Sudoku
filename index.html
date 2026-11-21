@@ -108,8 +108,9 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .continue h4{margin:0;font-family:var(--f-display);font-size:20px}
 .continue .go{align-self:flex-start;margin-top:4px}
 @media (max-width:480px){.continue{grid-template-columns:96px minmax(0,1fr);gap:12px}}
-.levels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-@media (max-width:720px){.levels{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.levels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.levels{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.levels{grid-template-columns:repeat(2,minmax(0,1fr))}.level:last-child:nth-child(odd){grid-column:1 / -1}}
 .level{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:6px;min-width:0}
 .level:hover{border-color:var(--accent)}
 .level b{font-family:var(--f-display);font-size:18px}
@@ -324,7 +325,7 @@ function solve(g0,limit=2){
     for(const d of bits(bm)){g[best]=d;rec();if(count>=limit)break}
     g[best]=0;
   })();
-  return{count,solution};
+  return{count,solution,steps};
 }
 const BOXNAME=["linksboven","middenboven","rechtsboven","links in het midden","in het midden","rechts in het midden","linksonder","middenonder","rechtsonder"];
 const houseLabel=h=>h.type==="blok"?`het blok ${BOXNAME[h.n]}`:`${h.type} ${h.n+1}`;
@@ -441,7 +442,8 @@ const LEVELS=[
   {key:"easy",name:"Makkelijk",stars:1,givens:40,desc:"Veel cijfers gegeven. Goed om rustig te beginnen."},
   {key:"medium",name:"Gemiddeld",stars:2,givens:33,desc:"Iets minder hulp. Je moet goed kijken."},
   {key:"hard",name:"Moeilijk",stars:3,givens:27,desc:"Weinig cijfers. Hoek- en middencijfers helpen."},
-  {key:"expert",name:"Expert",stars:4,givens:0,desc:"Alleen op te lossen met slimme trucs."}];
+  {key:"expert",name:"Expert",stars:4,givens:0,desc:"Alleen op te lossen met slimme trucs."},
+  {key:"master",name:"Meester",stars:5,givens:0,desc:"De zwaarste puzzels van de app, voor echte doorzetters."}];
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function fullGrid(){const g=Array(81).fill(0);
   (function fill(i){if(i===81)return true;if(g[i])return fill(i+1);
@@ -454,17 +456,27 @@ function singlesSolve(g0){const g=g0.slice();
     if(moved)continue;
     for(const h of HOUSES)for(let d=1;d<=9;d++){if(h.cells.some(i=>g[i]===d))continue;const pos=h.cells.filter(i=>!g[i]&&C[i]&(1<<d));if(pos.length===1){g[pos[0]]=d;moved=true}}
     if(!moved)return false}}
+function carve(level){
+  const sol=fullGrid(),g=sol.slice(),hardMode=level.stars>=4;
+  for(const i of shuffle([...Array(81).keys()])){
+    if(level.givens&&g.filter(Boolean).length<=level.givens)break;
+    const keep=g[i];g[i]=0;
+    if(solve(g,2).count!==1||(!hardMode&&!singlesSolve(g)))g[i]=keep;
+  }
+  return g;
+}
+/* 1-3 sterren: op te lossen met 'enige plek/enige cijfer'. 4: daar niet mee op te lossen.
+   5: idem, en van meerdere pogingen de puzzel met de meeste zoekstappen. */
 function makePuzzle(level){
-  for(let attempt=0;attempt<12;attempt++){
-    const sol=fullGrid(),g=sol.slice();
-    for(const i of shuffle([...Array(81).keys()])){
-      if(level.givens&&g.filter(Boolean).length<=level.givens)break;
-      const keep=g[i];g[i]=0;
-      if(solve(g,2).count!==1||(level.key!=="expert"&&!singlesSolve(g)))g[i]=keep;
-    }
-    const ok=level.key==="expert"?!singlesSolve(g):singlesSolve(g);
-    if(ok||attempt===11)return g;
-  }}
+  if(level.stars<=3){for(let t=0;t<12;t++){const g=carve(level);if(singlesSolve(g)||t===11)return g}}
+  const tries=level.stars>=5?8:1;let best=null,bestSteps=-1;
+  for(let t=0;t<30&&(best===null||t<tries);t++){
+    const g=carve(level);if(singlesSolve(g))continue;
+    const st=solve(g,2).steps;if(st>bestSteps){best=g;bestSteps=st}
+    if(level.stars<5)break;
+  }
+  return best||carve(level);
+}
 function newPuzzle(key,btn){
   const level=LEVELS.find(l=>l.key===key);if(!level)return;
   if(btn){btn.setAttribute("aria-busy","true");btn.querySelector(".d").textContent="Puzzel maken…"}
@@ -475,7 +487,7 @@ function newPuzzle(key,btn){
     S.puzzles.set(p.id,p);persist(p,true);openPuzzle(p);window.scrollTo(0,0);
   },30);
 }
-function starRow(n,max=4){let h="";for(let k=1;k<=max;k++)h+=I.star.replace("<svg",`<svg class="${k<=n?"":"off"}" aria-hidden="true"`);return`<span class="row-stars" title="${n} van ${max} sterren">${h}</span>`}
+function starRow(n,max=5){let h="";for(let k=1;k<=max;k++)h+=I.star.replace("<svg",`<svg class="${k<=n?"":"off"}" aria-hidden="true"`);return`<span class="row-stars" title="${n} van ${max} sterren">${h}</span>`}
 function renderHome(){
   const all=[...S.puzzles.values()].sort((a,b)=>b.updated-a.updated);
   const busy=all.find(p=>!p.solvedAt&&(progress(p)>0||p.seconds>=30));
@@ -505,16 +517,20 @@ function renderHome(){
   main.innerHTML=h+"</div>";
 }
 /* ---------- verzameling: sorteren en filteren op moeilijkheid ---------- */
-const diffKey=p=>p.stars?String(p.stars):"none";
-const diffLabel=k=>k==="none"?"Zonder niveau":`${k} ${k==="1"?"ster":"sterren"}`;
-const diffChipLabel=k=>k==="none"?"Zonder niveau":`<span class="stars">${I.star}${k}</span>`;
+/* Sterren in groepen: puzzelboeken gebruiken vaak 5 tot 13 sterren. */
+const RANGES=[{k:"r1",lo:1,hi:4,name:"Instap"},{k:"r5",lo:5,hi:7,name:"Gemiddeld"},{k:"r8",lo:8,hi:10,name:"Moeilijk"},{k:"r11",lo:11,hi:13,name:"Zeer moeilijk"},{k:"r14",lo:14,hi:99,name:"Extreem"}];
+const RANGE_ORDER=[...RANGES.map(r=>r.k),"none"];
+const diffKey=p=>{if(!p.stars)return"none";const r=RANGES.find(r=>p.stars>=r.lo&&p.stars<=r.hi);return r?r.k:"none"};
+const rangeStars=r=>r.hi>=99?`${r.lo}+`:`${r.lo}–${r.hi}`;
+const diffLabel=k=>{const r=RANGES.find(r=>r.k===k);return r?`${rangeStars(r)} sterren`:"Zonder niveau"};
+const diffChipLabel=k=>{const r=RANGES.find(r=>r.k===k);return r?`<span class="stars">${I.star}${rangeStars(r)}</span>`:"Zonder niveau"};
 function sortByDiff(a,b){const x=a.stars||99,y=b.stars||99;return x-y||b.updated-a.updated}
 function saveView(){ls.set("sudoku-view",{diff:S.diff,filter:S.filter,sort:S.sort})}
 function filterBar(all,{status=true,sort=true}={}){
-  const keys=[...new Set(all.map(diffKey))].sort((a,b)=>a==="none"?1:b==="none"?-1:a-b);
+  const keys=[...new Set(all.map(diffKey))].sort((a,b)=>RANGE_ORDER.indexOf(a)-RANGE_ORDER.indexOf(b));
   if(S.diff!=="all"&&!keys.includes(S.diff))S.diff="all";
   const cnt=k=>all.filter(p=>k==="all"||diffKey(p)===k).length;
-  const dchip=k=>`<button class="chip" type="button" data-diff="${k}" aria-pressed="${S.diff===k}" aria-label="${k==="all"?"Alle niveaus":diffLabel(k)}">${k==="all"?"Alle":diffChipLabel(k)}<span class="cnt">${cnt(k)}</span></button>`;
+  const dchip=k=>`<button class="chip" type="button" data-diff="${k}" aria-pressed="${S.diff===k}" aria-label="${k==="all"?"Alle niveaus":diffLabel(k)}" title="${k==="all"?"Alle niveaus":diffLabel(k)}">${k==="all"?"Alle":diffChipLabel(k)}<span class="cnt">${cnt(k)}</span></button>`;
   const f=(k,l)=>`<button class="chip" type="button" data-filter="${k}" aria-pressed="${S.filter===k}">${l}</button>`;
   return`<div class="filters">
     <div class="tabs" role="group" aria-label="Moeilijkheid"><span class="lbl">Moeilijkheid</span>${["all",...keys].map(dchip).join("")}</div>
