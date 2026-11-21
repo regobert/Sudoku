@@ -162,9 +162,18 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 @media (max-width:560px){.install{grid-template-columns:auto minmax(0,1fr)}.install .acts{grid-column:1 / -1;justify-content:flex-start}}
 .kbd{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:6px;padding:0 5px;background:var(--bg);font-weight:600;color:var(--ink);white-space:nowrap}
 
-.themebtn{border:1px solid var(--line)!important;background:var(--paper)!important}
-.themebtn span{font-size:14px}
-@media (max-width:560px){.themebtn span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}}
+/* Schuifknop licht/donker */
+.themeswitch{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 8px;color:var(--muted);touch-action:manipulation}
+.themeswitch .ic{display:flex}
+.themeswitch .ic svg{width:18px;height:18px}
+.themeswitch[aria-checked="false"] .sun{color:var(--star)}
+.themeswitch[aria-checked="true"] .moon{color:var(--accent)}
+.track{position:relative;width:46px;height:26px;border-radius:999px;background:var(--line);transition:background .2s;flex:none}
+.knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgb(0 0 0 / .3);transition:transform .2s}
+[aria-checked="true"] .track{background:var(--accent)}
+[aria-checked="true"] .knob{transform:translateX(20px)}
+.switchrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;font:inherit;border-bottom:1px solid var(--line);width:100%;background:none;border-left:0;border-right:0;border-top:0;text-align:left;color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.track,.knob{transition:none}}
 .seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:var(--peer);border-radius:12px;padding:4px}
 .seg button{border:0;background:transparent;border-radius:9px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;font-weight:600;font-size:13px;color:var(--muted)}
 .seg button svg{width:22px;height:22px}
@@ -306,7 +315,7 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
   <header class="top">
     <button class="brand" type="button" id="btnHome" aria-label="Naar de openingspagina"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><h1>Sudoku Schrift</h1></button>
     <button class="btn" id="btnList" type="button"></button>
-    <button class="btn ghost themebtn" id="btnTheme" type="button"></button>
+    <button class="themeswitch" id="btnTheme" type="button" role="switch"></button>
     <button class="btn ghost" id="btnKey" type="button" aria-label="Instellingen en back-up"></button>
     <button class="btn primary" id="btnPhoto" type="button"></button>
   </header>
@@ -481,9 +490,10 @@ function render(){
   $("#btnList").hidden=S.view==="list"||S.view==="home";
   $("#btnKey").innerHTML=I.gear;
   const dark=effectiveTheme()==="dark";
-  $("#btnTheme").innerHTML=(dark?I.sun:I.moon)+`<span>${dark?"Licht":"Donker"}</span>`;
-  $("#btnTheme").title=dark?"Licht scherm":"Donker scherm";
-  $("#btnTheme").setAttribute("aria-label",dark?"Schakel naar licht scherm":"Schakel naar donker scherm");
+  $("#btnTheme").innerHTML=`<span class="ic sun" aria-hidden="true">${I.sun}</span><span class="track" aria-hidden="true"><span class="knob"></span></span><span class="ic moon" aria-hidden="true">${I.moon}</span>`;
+  $("#btnTheme").setAttribute("aria-checked",String(dark));
+  $("#btnTheme").setAttribute("aria-label","Donker scherm");
+  $("#btnTheme").title=dark?"Schuif naar links voor een licht scherm":"Schuif naar rechts voor een donker scherm";
   if(S.view==="home")renderHome();else if(S.view==="list")renderList();else if(S.view==="play")renderPlay();else if(S.view==="review")renderReview();
 }
 function starsHTML(p){if(!p.stars&&!p.difficultyText)return"";const lbl=p.stars?`${p.stars} ${p.stars===1?"ster":"sterren"}`:p.difficultyText;
@@ -992,10 +1002,12 @@ function effectiveTheme(){const t=S.settings.theme||"auto";if(t!=="auto")return 
 function applyTheme(){const t=S.settings.theme||"auto",root=document.documentElement;
   if(t==="auto"){HOST_THEME?root.setAttribute("data-theme",HOST_THEME):root.removeAttribute("data-theme")}else root.setAttribute("data-theme",t);
   const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",effectiveTheme()==="dark"?"#12141c":"#4a3fc4")}
-function setTheme(t){S.settings.theme=t;ls.set("sudoku-settings",S.settings);applyTheme();render();if(overlay.innerHTML&&document.querySelector(".seg"))openSettings()}
+function setTheme(t){S.settings.theme=t;ls.set("sudoku-settings",S.settings);applyTheme();render();if(overlay.innerHTML&&document.querySelector(".switchrow"))openSettings()}
 try{matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{applyTheme();render()})}catch{}
-function themeSeg(){const t=S.settings.theme||"auto",b=(k,ic,l)=>`<button type="button" data-theme-set="${k}" aria-pressed="${t===k}">${ic}${l}</button>`;
-  return`<div class="setrow" style="flex-direction:column;align-items:stretch;gap:8px"><span>Scherm<br><span class="notice">Automatisch volgt de instelling van je telefoon of tablet.</span></span><div class="seg" role="group" aria-label="Licht of donker scherm">${b("light",I.sun,"Licht")}${b("auto",I.auto,"Automatisch")}${b("dark",I.moon,"Donker")}</div></div>`}
+function themeSeg(){const auto=(S.settings.theme||"auto")==="auto",dark=effectiveTheme()==="dark";
+  const sw=(act,on,title,desc)=>`<button type="button" class="switchrow" role="switch" aria-checked="${on}" data-act="${act}"><span>${title}<br><span class="notice">${desc}</span></span><span class="track" aria-hidden="true"><span class="knob"></span></span></button>`;
+  return sw("theme-dark",dark,`Donker scherm`,auto?"Nu ingesteld door je apparaat. Schuif om zelf te kiezen.":"Schuif naar rechts voor donker, naar links voor licht.")
+    +sw("theme-auto",auto,"Volg mijn apparaat","Licht of donker gaat vanzelf mee met je telefoon of tablet.")}
 
 function confirmSheet(title,text,okLabel,okAct){sheet(`<h2>${title}</h2><p>${text}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${okAct}">${okLabel}</button><button class="btn" type="button" data-act="close">Annuleren</button></div>`)}
 
@@ -1041,7 +1053,8 @@ document.addEventListener("click",e=>{
   if(t.id==="btnHome"){goHome();return}
   if(t.dataset.level){newPuzzle(t.dataset.level,t);return}
   if(t.id==="btnTheme"){setTheme(effectiveTheme()==="dark"?"light":"dark");return}
-  if(t.dataset.themeSet){setTheme(t.dataset.themeSet);return}
+  if(t.dataset.act==="theme-dark"){setTheme(effectiveTheme()==="dark"?"light":"dark");return}
+  if(t.dataset.act==="theme-auto"){setTheme((S.settings.theme||"auto")==="auto"?effectiveTheme():"auto");return}
   if(t.id==="btnKey"){openSettings();return}
   if(t.dataset.filter){S.filter=t.dataset.filter;saveView();render();return}
   if(t.dataset.diff){S.diff=t.dataset.diff;saveView();render();return}
