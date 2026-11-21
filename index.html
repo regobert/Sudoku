@@ -539,8 +539,9 @@ function renderHome(){
         <span class="bar" aria-hidden="true"><i style="width:${pr*100}%"></i></span>
         <span class="notice">${Math.round(pr*100)}% ingevuld · ${fmtTime(busy.seconds)} gespeeld</span>
         <span class="btn primary go">Verder</span></span></button></section>`}
-  const photoHero=`<section class="photo-hero" aria-label="Foto van een sudoku">${I.camera}<div><b>Sudoku uit een boekje of app?</b><p>Maak een foto of upload er een. Vraag dan een hint, of zet hem in je verzameling.</p></div>
-    <div class="acts"><button class="btn primary" type="button" data-act="camera">${I.camera}Foto maken</button><button class="btn" type="button" data-act="upload">${I.upload}Foto uploaden</button></div></section>`;
+  const photoHero=`<section class="photo-hero" aria-label="Foto van een sudoku">${I.bulb}<div><b>Bezig op papier en even vast?</b><p>Maak een foto van je puzzel en krijg meteen een hint. Je ingevulde cijfers tellen mee.</p></div>
+    <div class="acts"><button class="btn primary" type="button" data-act="quickhint">${I.camera}Hint met foto</button><button class="btn" type="button" data-act="quickhint-up" title="Kies een bestaande foto of schermafbeelding">${I.upload}Uit fotorol</button></div>
+    <p class="notice" style="grid-column:1 / -1;margin:0">Wil je de puzzel bewaren of hier verder spelen? <button class="linkbtn" type="button" data-act="camera">Foto maken</button> of <button class="linkbtn" type="button" data-act="upload">foto uploaden</button> en kies Digitaliseren.</p></section>`;
   h=h.replace('</p></div>','</p></div>'+installCard()+photoHero);
   h+=`<section><div class="sec-title"><h3>Nieuwe puzzel</h3></div><div class="levels">${LEVELS.map(l=>`<button class="level" type="button" data-level="${l.key}">${starRow(l.stars)}<b>${l.name}</b><span class="d">${l.desc}</span></button>`).join("")}</div></section>
     <p class="notice" style="margin-top:-14px">Geen foto bij de hand? <button class="linkbtn" type="button" data-act="manual">Typ een puzzel zelf over</button></p>`;
@@ -798,7 +799,7 @@ async function readPhoto(mode){
   if(!getKey()){openKeySheet(mode);return}
   const ctl=new AbortController();
   sheet(`<h2>${mode==="hint"?"Even kijken…":"Puzzel overnemen…"}</h2><img class="preview" src="${photo.url}" alt="">
-    <div class="busyline"><div class="spinner" aria-hidden="true"></div><span id="busyTxt">Claude leest de cijfers van je foto. Dit duurt meestal 20 tot 60 seconden.</span></div>
+    <div class="busyline"><div class="spinner" aria-hidden="true"></div><span id="busyTxt">${mode==="hint"?"Claude leest je puzzel, ook de cijfers die je zelf hebt ingevuld. Daarna volgt je hint. Dit duurt meestal 20 tot 60 seconden.":"Claude leest de cijfers van je foto. Dit duurt meestal 20 tot 60 seconden."}</span></div>
     <div><button class="btn" type="button" id="stopRead">Stoppen</button></div>`);
   $("#stopRead").onclick=()=>{ctl.abort();closeSheet()};
   try{
@@ -846,7 +847,7 @@ function renderReview(){
     const H=R.hintState;
     side=`<div class="hintcard" role="status">${H?(H.done?`<p>Deze puzzel is al opgelost. Knap gedaan!</p>`:`<span class="lvl">Hint ${H.level+1} van ${H.steps.length}</span><p>${esc(H.steps[H.level])}</p>${H.level<H.steps.length-1?`<div class="acts"><button class="btn" type="button" data-act="rhintmore">${I.bulb}Meer hulp</button></div>`:""}`):`<p>Kon geen hint maken. Controleer of de cijfers goed zijn gelezen.</p>`}</div>
       <p class="notice">Klopt een cijfer niet met je foto? Tik het vakje aan en kies het goede cijfer. De hint past zich aan.</p>
-      <button class="btn" type="button" data-act="todigi">${I.grid}Toch digitaliseren</button>`;
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="quickhint">${I.camera}Nieuwe foto, volgende hint</button><button class="btn" type="button" data-act="todigi">${I.grid}Toch digitaliseren</button></div>`;
   }else{
     side=`<div class="fields"><label class="field">Naam<input id="rTitle" value="${esc(R.title)}"></label>
       <label class="field">Sterren<input id="rStars" type="number" min="0" max="20" inputmode="numeric" value="${R.stars??""}" placeholder="–"></label></div>
@@ -856,13 +857,14 @@ function renderReview(){
   main.innerHTML=`<div class="play">
     <section class="boardcol">
       <div class="board-head"><h2>${R.mode==="hint"?"Hint voor je puzzel":"Controleer de cijfers"}</h2>${R.stars||R.difficultyText?starsHTML(R):""}</div>
+      ${R.mode==="hint"?side:""}
       ${board}
       <div class="legend"><span><b>5</b> gedrukt cijfer</span><span><b style="color:var(--entry)">5</b> zelf ingevuld</span></div>
     </section>
     <aside class="panel">
+      ${R.mode==="hint"?"":side}
       ${R.photo?`<img class="photo-ref" src="${R.photo}" alt="Je foto ter vergelijking">`:""}
       <div class="msg ${st.kind}">${esc(st.text)}</div>
-      ${side}
       <div class="padgrid" style="grid-template-columns:repeat(3,1fr)">${keys}
         <button type="button" class="tool" data-act="rkind" style="aspect-ratio:auto;height:54px">${I.pencil}<span>Gedrukt / zelf</span></button>
         <button type="button" class="tool" data-act="rerase" style="aspect-ratio:auto;height:54px">${I.erase}<span>Wissen</span></button>
@@ -950,8 +952,10 @@ document.addEventListener("click",e=>{
   switch(a){
     case"close":case"closebg":closeSheet();break;
     case"photo":openPhotoSheet();break;
-    case"pick":case"camera":$("#fileIn").value="";$("#fileIn").click();break;
-    case"upload":$("#fileUp").value="";$("#fileUp").click();break;
+    case"pick":case"camera":S.quickHint=false;$("#fileIn").value="";$("#fileIn").click();break;
+    case"upload":S.quickHint=false;$("#fileUp").value="";$("#fileUp").click();break;
+    case"quickhint":S.quickHint=true;$("#fileIn").value="";$("#fileIn").click();break;
+    case"quickhint-up":S.quickHint=true;$("#fileUp").value="";$("#fileUp").click();break;
     case"manual":startManual();break;
     case"read-hint":readHint();break;
     case"read-digi":readPhoto("digi");break;
@@ -988,7 +992,8 @@ document.addEventListener("click",e=>{
 });
 document.addEventListener("change",e=>{
   if((e.target.id==="fileIn"||e.target.id==="fileUp")&&e.target.files[0]){const f=e.target.files[0];
-    prepImage(f).then(b=>{if(photo)URL.revokeObjectURL(photo.url);photo={blob:b,url:URL.createObjectURL(b)};openPhotoSheet()});return}
+    const quick=S.quickHint;S.quickHint=false;
+    prepImage(f).then(b=>{if(photo)URL.revokeObjectURL(photo.url);photo={blob:b,url:URL.createObjectURL(b)};quick?readHint():openPhotoSheet()});return}
   if(e.target.id==="sortSel"){S.sort=e.target.value;saveView();render();return}
   if(e.target.dataset.set){S.settings[e.target.dataset.set]=e.target.checked;ls.set("sudoku-settings",S.settings);if(S.view==="play")render()}
 });
