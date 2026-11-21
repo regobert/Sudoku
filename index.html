@@ -147,7 +147,14 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .key.cornerkey{font-size:19px;align-items:flex-start;justify-content:flex-start;padding:7px 10px}
 .key.centerkey{font-size:19px}
 .modehelp{font-size:12.5px;color:var(--muted);margin:0}
-.wide{grid-column:1 / span 3;aspect-ratio:auto;height:56px}
+.wide{grid-column:1 / span 2;aspect-ratio:auto;height:56px}
+.hintkey{border:1px solid var(--star);background:var(--hint);color:var(--ink);border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:14px;height:56px}
+.hintkey svg{width:22px;height:22px;color:var(--star)}
+.hintkey:hover{filter:brightness(1.04)}
+.helplist{display:grid;grid-template-columns:auto 1fr;gap:10px 12px;align-items:center;margin:0}
+.helplist dt{display:flex;justify-content:center;color:var(--accent)}
+.helplist dt svg{width:24px;height:24px}
+.helplist dd{margin:0}
 .swatch{border:2px solid var(--line);border-radius:12px;aspect-ratio:1.15}
 .swatch.none{background:var(--paper);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
 .botrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -461,7 +468,7 @@ function renderPlay(){
       const left=9-counts[k];
       return`<button type="button" class="key${kc}${left<=0?" done":""}" data-digit="${k}" aria-label="Cijfer ${k}">${k}<span class="left">${left>0?left:""}</span></button>`;
     }).join("");
-    pad=`<div class="padgrid">${keys}<button type="button" class="key wide" data-act="erase" aria-label="Wissen">${I.erase.replace('<svg','<svg width="30" height="30"')}</button>${modeBtn("color")}</div>`;
+    pad=`<div class="padgrid">${keys}<button type="button" class="key wide" data-act="erase" aria-label="Wissen">${I.erase.replace('<svg','<svg width="30" height="30"')}</button><button type="button" class="hintkey" data-act="hint" title="Vraag een hint voor de volgende stap">${I.bulb}Hint</button>${modeBtn("color")}</div>`;
   }
   pad+=`<p class="modehelp">${help}</p>`;
   let hint="";
@@ -480,7 +487,7 @@ function renderPlay(){
       <div class="toolrow">
         <button class="tool" type="button" data-act="settings">${I.gear}<span>Instellingen</span></button>
         <button class="tool" type="button" data-act="list">${I.list}<span>Verzameling</span></button>
-        <button class="tool" type="button" data-act="hint">${I.help}<span>Hint</span></button>
+        <button class="tool" type="button" data-act="help">${I.help}<span>Uitleg</span></button>
         <button class="tool" type="button" data-act="restart">${I.restart}<span>Opnieuw</span></button>
       </div>
       ${hint}${msg}
@@ -682,6 +689,19 @@ function openSettings(){
   <div><button class="btn primary" type="button" data-act="close">Klaar</button></div>`)}
 function confirmSheet(title,text,okLabel,okAct){sheet(`<h2>${title}</h2><p>${text}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${okAct}">${okLabel}</button><button class="btn" type="button" data-act="close">Annuleren</button></div>`)}
 
+function openHelp(){
+  const r=(icon,t)=>`<dt>${icon}</dt><dd>${t}</dd>`;
+  sheet(`<h2>Zo werkt het</h2><dl class="helplist">
+    ${r('<span class="mode" style="border:0;background:none"><span class="big" style="width:28px;height:28px;font-size:20px">9</span></span>',"Tik een vakje en dan een cijfer om het antwoord in te vullen.")}
+    ${r('<span class="mode" style="border:0;background:none"><span class="corner" style="width:28px;height:28px"><i>1</i><i>2</i><i>3</i></span></span>',"Hoekcijfers: kleine cijfers in de hoek, om te zien waar een cijfer nog kan staan.")}
+    ${r('<span class="mode" style="border:0;background:none"><span class="center" style="width:28px;height:28px">12</span></span>',"Middencijfers: de cijfers die in dit vakje nog kunnen.")}
+    ${r(I.bulb,"Hint: een tip voor de volgende stap. Tik op Meer hulp als je meer wilt weten.")}
+    ${r(I.palette,"Kleuren: geef vakjes een kleur om iets te onthouden.")}
+    ${r(I.undo,"Terug en Vooruit: zet je laatste stappen terug of opnieuw.")}
+    ${r(I.check,"Controleer: kijk of je cijfers kloppen. Is alles goed, dan volgt een feestje.")}
+    </dl><p class="notice">Met een toetsenbord: pijltjes om te bewegen, 1-9 om in te vullen, N om te wisselen tussen groot, hoek en midden.</p>
+    <div><button class="btn primary" type="button" data-act="close">Begrepen</button></div>`)}
+
 /* ---------- feest ---------- */
 function celebrate(p){
   const H=p.hints?` met ${p.hints} hint${p.hints>1?"s":""}`:" zonder hints";
@@ -734,6 +754,7 @@ document.addEventListener("click",e=>{
     case"hint":case"hintmore":hint();break;
     case"hintclose":S.hint=null;render();break;
     case"settings":openSettings();break;
+    case"help":openHelp();break;
     case"restart":confirmSheet("Opnieuw beginnen?","Al je ingevulde cijfers, notities en kleuren worden gewist. De tijd begint weer bij 0.","Opnieuw beginnen","dorestart");break;
     case"dorestart":{const p=S.cur;pushUndo();p.entries.fill(0);p.notes.fill(0);p.centers.fill(0);p.colors.fill(0);p.seconds=0;p.solvedAt=null;p.hints=0;S.hint=null;closeSheet();after(true);break}
     case"askdelete":confirmSheet("Puzzel verwijderen?",`“${esc(S.cur?.title)}” verdwijnt uit je verzameling. Dit kun je niet ongedaan maken.`,"Verwijderen","dodelete");break;
