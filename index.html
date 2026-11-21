@@ -989,13 +989,13 @@ For each cell output a digit 1-9, or "." if the cell is empty.
 Also say for each filled cell whether it is a printed/original clue ("P") or a digit added later by the solver ("H": handwriting, pencil, or on screens a different colour/weight than the clues).
 Ignore faint digits that show through from the other side of the paper, and ignore tiny pencil-mark candidates in corners.
 Look for a difficulty indication anywhere on the page or screen: a number of stars (a star badge containing the number 7 means 7 stars; a row of 4 filled stars means 4), words like "makkelijk", "gemiddeld", "moeilijk", "expert", "level 3", "niveau 5". Look also for a puzzle number or name (e.g. a number printed under the grid, "Puzzle 2").
-This may be a thermo sudoku: grey or coloured thermometer shapes drawn over the grid, each a round bulb with a line through neighbouring cells. If so, list every thermometer as the cells it covers in order, starting at the bulb, using 1-based [row, column]. Do not read a bulb or a thermometer line as a digit.
+This may be a thermo sudoku: grey or coloured thermometer shapes drawn over the grid, each a round bulb with a line through neighbouring cells; the line can run horizontally, vertically or diagonally (also through cells that contain a digit). If so, list every thermometer as all the cells it covers in order, starting at the bulb, using 1-based [row, column]; diagonal steps go to the cell diagonally next to the previous one. Do not read a bulb or a thermometer line as a digit.
 Answer with only JSON in exactly this shape:
 {"found":true,"rows":["392......", ... 9 strings of 9 characters],"kinds":["PPP......", ... 9 strings, P/H/. matching rows],"stars":7,"difficultyText":"7 sterren","title":"49","thermos":[[[3,2],[3,3],[3,4]], ...]}
 It may also be a killer sudoku: dashed or dotted cages with a small sum printed in a corner of the cage. If so, list every cage as {"sum":23,"cells":[[1,1],[1,2],[2,1]]} with 1-based [row, column]. The small cage sums are not cell digits: do not put them in rows.
 Add "cages":[...] to the JSON. Use "thermos":[] and "cages":[] for an ordinary sudoku.
 Use null for stars, difficultyText or title when there is none. difficultyText is a short Dutch phrase as the user would say it (e.g. "7 sterren", "Moeilijk", "Niveau 3"). If there is no sudoku in the photo, answer {"found":false}. Output only the JSON object, with no other text.`;
-const APP_VERSION="12";
+const APP_VERSION="13";
 /* Welke herkenning? Claude met sleutel, anders (of op verzoek) gratis op het apparaat. */
 const useFreeOCR=()=>!getKey()||!!S.settings.freeOcr||S.freeOnce;
 function loadOCR(){return window.SudokuOCR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="ocr.js?v="+APP_VERSION;sc.onload=()=>res();sc.onerror=()=>rej(new Error("De gratis herkenning kon niet worden geladen. Ben je verbonden met internet?"));document.head.appendChild(sc)})}

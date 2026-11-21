@@ -226,12 +226,20 @@
     };
     const ctr = (i) => [(i % 9 + 0.5) * CELL, (Math.floor(i / 9) + 0.5) * CELL];
     const bulb = new Set();
-    for (let i = 0; i < 81; i++) { const [x, y] = ctr(i); if (frac(x, y, CELL * 0.24, CELL * 0.24) > 0.6 && frac(x, y - CELL * 0.27, CELL * 0.07, CELL * 0.03) > 0.5 && frac(x - CELL * 0.27, y, CELL * 0.03, CELL * 0.07) > 0.5) bulb.add(i); }
+    for (let i = 0; i < 81; i++) { const [x, y] = ctr(i); if (frac(x, y, CELL * 0.2, CELL * 0.2) > 0.6 && frac(x, y - CELL * 0.22, CELL * 0.07, CELL * 0.03) > 0.5 && frac(x - CELL * 0.22, y, CELL * 0.03, CELL * 0.07) > 0.5 && frac(x, y + CELL * 0.22, CELL * 0.07, CELL * 0.03) > 0.5) bulb.add(i); }
     const adj = new Map(), link = (a, b) => { (adj.get(a) || adj.set(a, []).get(a)).push(b); (adj.get(b) || adj.set(b, []).get(b)).push(a); };
     for (let i = 0; i < 81; i++) {
       const r = Math.floor(i / 9), c = i % 9, [x, y] = ctr(i);
       if (c < 8 && frac(x + CELL / 2, y, CELL * 0.12, CELL * 0.06) > 0.6 && frac(x + CELL / 2, y - CELL * 0.3, CELL * 0.1, CELL * 0.08) < 0.3) link(i, i + 1);
       if (r < 8 && frac(x, y + CELL / 2, CELL * 0.06, CELL * 0.12) > 0.6 && frac(x - CELL * 0.3, y + CELL / 2, CELL * 0.08, CELL * 0.1) < 0.3) link(i, i + 9);
+      // schuine verbindingen: vulling vlak voor en na de gedeelde hoek, maar niet ernaast
+      if (r < 8) for (const dc of [1, -1]) {
+        if ((dc === 1 && c === 8) || (dc === -1 && c === 0)) continue;
+        const kx = x + dc * CELL / 2, ky = y + CELL / 2, o = CELL * 0.16, q = CELL * 0.045;
+        const on = Math.min(frac(kx - dc * o, ky - o, q, q), frac(kx + dc * o, ky + o, q, q));
+        const off = Math.max(frac(kx + dc * o, ky - o, q, q), frac(kx - dc * o, ky + o, q, q));
+        if (on > 0.6 && off < 0.25) link(i, i + 9 + dc);
+      }
     }
     const thermos = [];
     for (const b of bulb) {
