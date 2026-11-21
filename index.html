@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Maak een foto van een sudoku: vraag een hint of zet hem in je verzameling.">
+<title>Sudoku Schrift</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: puzzle-boek pagina; links het raster, rechts het bedieningspaneel (zoals op de tablet), op de telefoon onder elkaar */
+:root{
+  --bg:#f3f5fa; --paper:#ffffff; --ink:#1c2233; --muted:#5d667c; --line:#c9cfdd; --line-strong:#2a3145;
+  --accent:#4a3fc4; --accent-ink:#ffffff; --accent-soft:#e7e4fb;
+  --entry:#2f62d9; --sel:#ffe27a; --peer:#eef0f7; --same:#d9d4fb;
+  --bad:#d23b4c; --bad-soft:#fde3e6; --good:#1f8a5b; --good-soft:#dcf3e8; --star:#f2a516;
+  --hint:#fff4c4; --hint-cell:#ffd34d;
+  --c1:#ffd0d5; --c2:#ffe2b8; --c3:#fff3a8; --c4:#cdeec9; --c5:#c9e3ff; --c6:#e3d3ff;
+  --f-display:"Outfit",ui-rounded,"Segoe UI",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:12px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12141c; --paper:#1b1e29; --ink:#e8eaf2; --muted:#9aa2b8; --line:#353a4c; --line-strong:#a9b0c6;
+  --accent:#8d84ff; --accent-ink:#14121f; --accent-soft:#2a2650;
+  --entry:#7fb0ff; --sel:#6b5a12; --peer:#232736; --same:#3b3570;
+  --bad:#ff6b7a; --bad-soft:#4a1f27; --good:#4fd39a; --good-soft:#173a2b; --star:#ffbf3c;
+  --hint:#3a3415; --hint-cell:#7a6612;
+  --c1:#5a2a33; --c2:#5a4123; --c3:#55501f; --c4:#24482a; --c5:#1f3c5c; --c6:#3b2d5c;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12141c; --paper:#1b1e29; --ink:#e8eaf2; --muted:#9aa2b8; --line:#353a4c; --line-strong:#a9b0c6;
+  --accent:#8d84ff; --accent-ink:#14121f; --accent-soft:#2a2650;
+  --entry:#7fb0ff; --sel:#6b5a12; --peer:#232736; --same:#3b3570;
+  --bad:#ff6b7a; --bad-soft:#4a1f27; --good:#4fd39a; --good-soft:#173a2b; --star:#ffbf3c;
+  --hint:#3a3415; --hint-cell:#7a6612;
+  --c1:#5a2a33; --c2:#5a4123; --c3:#55501f; --c4:#24482a; --c5:#1f3c5c; --c6:#3b2d5c;
+  color-scheme:dark}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+a{color:var(--accent)}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 32px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+.wrap{max-width:1040px;margin:0 auto}
+header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block:18px 14px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand h1{font-size:24px;font-weight:700;letter-spacing:-.01em}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--accent);display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:5px}
+.logo i{background:var(--accent-ink);opacity:.9;border-radius:2px}
+.logo i:nth-child(2n){opacity:.35}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:9px 14px;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.danger{color:var(--bad)}
+.btn svg{width:18px;height:18px;flex:none}
+.btn:disabled{opacity:.5;cursor:default}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 12px;font-size:13px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.notice{font-size:13px;color:var(--muted)}
+.notice.warn{color:var(--bad)}
+
+/* Verzameling */
+.list-head{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-block:6px 14px}
+.list-head h2{font-size:20px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px;text-align:left}
+.card:hover{border-color:var(--accent)}
+.card .mini{width:100%;aspect-ratio:1;max-width:100%;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));border:2px solid var(--line-strong);border-radius:4px;overflow:hidden;font-family:var(--f-display);font-size:11px;background:var(--paper)}
+.mini span{display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.mini span.e{color:var(--entry)}
+.mini span.bR{border-right:2px solid var(--line-strong)} .mini span.bB{border-bottom:2px solid var(--line-strong)}
+.card .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h3{font-size:16px;font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--peer);color:var(--muted)}
+.pill.solved{background:var(--good-soft);color:var(--good)}
+.pill.busy{background:var(--accent-soft);color:var(--accent)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.stars{display:inline-flex;align-items:center;gap:3px;font-weight:700;font-size:12px;color:var(--star);font-family:var(--f-display)}
+.stars svg{width:14px;height:14px;fill:var(--star)}
+.bar{height:5px;border-radius:9px;background:var(--peer);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.card .row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.empty{background:var(--paper);border:1px dashed var(--line);border-radius:var(--r);padding:22px;display:flex;flex-direction:column;gap:10px;max-width:620px}
+.empty h3{font-size:18px}
+.example-tag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+/* Speelveld */
+.play{display:grid;grid-template-columns:minmax(0,600px) minmax(260px,320px);gap:24px;align-items:start;justify-content:center}
+@media (max-width:860px){.play{grid-template-columns:minmax(0,1fr);gap:14px}.panel{max-width:600px;width:100%;margin:0 auto}}
+.boardcol{min-width:0;display:flex;flex-direction:column;gap:10px}
+.board-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.board-head h2{font-size:19px;margin-right:auto}
+.timer{font-family:var(--f-display);font-variant-numeric:tabular-nums;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px}
+.boardbox{container-type:inline-size;width:100%;max-width:600px;margin:0 auto}
+.board{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));aspect-ratio:1;max-width:100%;border:3px solid var(--line-strong);border-radius:6px;overflow:hidden;background:var(--paper);user-select:none;touch-action:manipulation}
+.cell{position:relative;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--paper);padding:0;display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-size:6.4cqw;font-weight:500;font-variant-numeric:tabular-nums;line-height:1;min-width:0;min-height:0;overflow:hidden}
+.cell.bR{border-right:2.5px solid var(--line-strong)} .cell.bB{border-bottom:2.5px solid var(--line-strong)}
+.cell.k1{background:var(--c1)}.cell.k2{background:var(--c2)}.cell.k3{background:var(--c3)}.cell.k4{background:var(--c4)}.cell.k5{background:var(--c5)}.cell.k6{background:var(--c6)}
+.cell.peer{background:var(--peer)}
+.cell.hh{background:var(--hint)}
+.cell.same{background:var(--same)}
+.cell.hc{background:var(--hint-cell)}
+.cell.sel{background:var(--sel)}
+.cell.given{font-weight:600;color:var(--ink)}
+.cell.entry{color:var(--entry)}
+.cell.wrong{color:var(--bad)}
+.cell.wrong::after{content:"";position:absolute;inset:auto 18% 10% 18%;height:2px;background:var(--bad);border-radius:2px}
+.cell.conflict{box-shadow:inset 0 0 0 2px var(--bad)}
+.cell:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.notes{position:absolute;inset:6%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);font-size:2.5cqw;font-weight:500;color:var(--muted);font-family:var(--f-body)}
+.notes span{display:flex;align-items:center;justify-content:center}
+.notes span.on-same{color:var(--accent);font-weight:700}
+
+.panel{display:flex;flex-direction:column;gap:12px}
+.toolrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tool{border:1px solid var(--line);background:var(--paper);border-radius:12px;aspect-ratio:1.25;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--muted)}
+.tool svg{width:24px;height:24px;color:var(--accent)}
+.tool:hover{border-color:var(--accent)}
+.padgrid{display:grid;grid-template-columns:repeat(3,1fr) 0.8fr;gap:8px}
+.key{position:relative;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-size:30px;font-weight:600;aspect-ratio:1.15;display:flex;align-items:center;justify-content:center}
+.key:hover{filter:brightness(1.08)}
+.key .left{position:absolute;right:7px;bottom:4px;font-size:11px;font-family:var(--f-body);opacity:.75;font-weight:500}
+.key.done{opacity:.35}
+.key.notekey{font-size:20px}
+.mode{border:1px solid var(--line);background:var(--paper);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--accent)}
+.mode[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.mode .big{font-family:var(--f-display);font-size:26px;font-weight:700;border:2px solid currentColor;border-radius:6px;width:34px;height:34px;display:flex;align-items:center;justify-content:center}
+.mode .small{font-family:var(--f-display);font-size:11px;font-weight:700;border:2px solid currentColor;border-radius:6px;width:34px;height:34px;display:grid;grid-template-columns:1fr 1fr;place-items:center;line-height:1;padding:2px}
+.mode svg{width:30px;height:30px}
+.wide{grid-column:1 / span 3;aspect-ratio:auto;height:56px}
+.swatch{border:2px solid var(--line);border-radius:12px;aspect-ratio:1.15}
+.swatch.none{background:var(--paper);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+.botrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.botrow .tool{aspect-ratio:auto;height:54px;flex-direction:row;gap:8px;font-size:13px;color:var(--ink)}
+.hintcard{background:var(--hint);border:1px solid var(--star);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.hintcard p{margin:0}
+.hintcard .acts{display:flex;gap:8px;flex-wrap:wrap}
+.hintcard .lvl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.msg{border-radius:12px;padding:10px 14px;font-weight:500}
+.msg.good{background:var(--good-soft);color:var(--good)}
+.msg.bad{background:var(--bad-soft);color:var(--bad)}
+.msg.info{background:var(--accent-soft);color:var(--accent)}
+
+/* Foto & controle */
+.sheet-back{position:fixed;inset:0;background:rgb(10 12 20 / .55);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:40}
+.sheet{background:var(--paper);border-radius:16px;max-width:520px;width:100%;max-height:100%;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.sheet h2{font-size:20px}
+.sheet .preview{width:100%;max-height:300px;object-fit:contain;border-radius:10px;background:var(--peer)}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:26px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;color:var(--muted)}
+.drop svg{width:40px;height:40px;color:var(--accent)}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--paper)}
+.choice button:hover{border-color:var(--accent)}
+.choice button b{font-family:var(--f-display);font-size:16px}
+.choice button span{font-size:12.5px;color:var(--muted)}
+.choice svg{width:22px;height:22px;color:var(--accent)}
+@media (max-width:420px){.choice{grid-template-columns:1fr}}
+.spinner{width:22px;height:22px;border-radius:50%;border:3px solid var(--accent-soft);border-top-color:var(--accent);animation:spin 1s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.busyline{display:flex;gap:10px;align-items:center}
+.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.field input,.field select{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.fields{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+.photo-ref{width:100%;border-radius:10px;max-height:240px;object-fit:contain;background:var(--peer)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.legend b{font-family:var(--f-display);font-size:15px}
+.setrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-block:8px;border-bottom:1px solid var(--line)}
+.setrow input{width:20px;height:20px;accent-color:var(--accent)}
+
+/* Feest */
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:60;width:100%;height:100%}
+.party .sheet{text-align:center;align-items:center}
+.party h2{font-size:30px}
+.party .big-stars{font-size:15px}
+.trophy{width:72px;height:72px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;animation:pop .6s cubic-bezier(.3,1.6,.5,1)}
+.trophy svg{width:40px;height:40px;color:var(--star)}
+@keyframes pop{from{transform:scale(.3)}to{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.trophy,.spinner{animation:none}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><div class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><h1>Sudoku Schrift</h1></div>
+    <button class="btn" id="btnList" type="button"></button>
+    <button class="btn ghost" id="btnKey" type="button" aria-label="Instellingen voor fotoherkenning"></button>
+    <button class="btn primary" id="btnPhoto" type="button"></button>
+  </header>
+  <main id="main"></main>
+  <p class="notice" id="storeNote"></p>
+</div>
+<input type="file" id="fileIn" accept="image/*" capture="environment" class="sr" tabindex="-1" aria-hidden="true">
+<canvas id="confetti" hidden></canvas>
+<div id="overlay"></div>
+
+<script>
+(()=>{
+"use strict";
+/* ---------- iconen ---------- */
+const I={
+ camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>',
+ grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>',
+ gear:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3h-4l-.3 2.9a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1L11 21h4l.3-2.9a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>',
+ list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
+ help:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>',
+ restart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/><path d="M12 8v4l2 2"/></svg>',
+ undo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
+ redo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg>',
+ check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>',
+ erase:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 5h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9l-6-7z"/><path d="m12 9 6 6M18 9l-6 6"/></svg>',
+ palette:'<svg viewBox="0 0 24 24"><path d="M12 12 12 2a10 10 0 0 1 8.7 5z" fill="#ef5b6b"/><path d="M12 12l8.7-5A10 10 0 0 1 20.7 17z" fill="#f6b13c"/><path d="M12 12l8.7 5A10 10 0 0 1 12 22z" fill="#f2df4a"/><path d="M12 12v10a10 10 0 0 1-8.7-5z" fill="#5cc477"/><path d="M12 12 3.3 17a10 10 0 0 1 0-10z" fill="#4f9cf0"/><path d="M12 12 3.3 7A10 10 0 0 1 12 2z" fill="#9c74f0"/></svg>',
+ star:'<svg viewBox="0 0 24 24"><path d="m12 2.5 2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>',
+ trophy:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.4A5 5 0 0 1 13 14.9V18h3v3H8v-3h3v-3.1A5 5 0 0 1 8.4 12H8a4 4 0 0 1-4-4V5h3zm0 4H6v1a2 2 0 0 0 1.2 1.8C7.1 9.2 7 8.6 7 8zm10 0v1c0 .6-.1 1.2-.2 1.8A2 2 0 0 0 18 8V7z"/></svg>',
+ pause:'<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+ bulb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>',
+ pencil:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>'
+};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtTime=s=>{s=Math.max(0,Math.floor(s||0));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+":"+String(m).padStart(2,"0"):m)+":"+String(x).padStart(2,"0")};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+/* ---------- sudoku-logica ---------- */
+const ROW=i=>Math.floor(i/9),COL=i=>i%9,BOX=i=>Math.floor(ROW(i)/3)*3+Math.floor(COL(i)/3);
+const HOUSES=[];
+for(let r=0;r<9;r++)HOUSES.push({type:"rij",n:r,cells:[...Array(9)].map((_,c)=>r*9+c)});
+for(let c=0;c<9;c++)HOUSES.push({type:"kolom",n:c,cells:[...Array(9)].map((_,r)=>r*9+c)});
+for(let b=0;b<9;b++){const br=Math.floor(b/3)*3,bc=b%3*3,cells=[];for(let a=0;a<3;a++)for(let d=0;d<3;d++)cells.push((br+a)*9+bc+d);HOUSES.push({type:"blok",n:b,cells})}
+const PEERS=[...Array(81)].map((_,i)=>{const s=new Set();HOUSES.forEach(h=>{if(h.cells.includes(i))h.cells.forEach(j=>j!==i&&s.add(j))});return[...s]});
+const bits=m=>{const o=[];for(let d=1;d<=9;d++)if(m&(1<<d))o.push(d);return o};
+const pop=m=>{let c=0;while(m){m&=m-1;c++}return c};
+function cands(g){const out=new Array(81).fill(0);for(let i=0;i<81;i++){if(g[i])continue;let m=0b1111111110;for(const p of PEERS[i])if(g[p])m&=~(1<<g[p]);out[i]=m}return out}
+function conflicts(g){const bad=new Set();for(let i=0;i<81;i++)if(g[i])for(const p of PEERS[i])if(g[p]===g[i]){bad.add(i);bad.add(p)}return bad}
+function solve(g0,limit=2){
+  const g=g0.slice();if(conflicts(g).size)return{count:0,solution:null};
+  let count=0,solution=null,steps=0;
+  (function rec(){
+    if(count>=limit||steps>200000)return;steps++;
+    let best=-1,bm=0,bc=10;
+    for(let i=0;i<81;i++)if(!g[i]){let m=0b1111111110;for(const p of PEERS[i])if(g[p])m&=~(1<<g[p]);const c=pop(m);if(c<bc){bc=c;best=i;bm=m;if(c<=1)break}}
+    if(best<0){count++;if(!solution)solution=g.slice();return}
+    if(bc===0)return;
+    for(const d of bits(bm)){g[best]=d;rec();if(count>=limit)break}
+    g[best]=0;
+  })();
+  return{count,solution};
+}
+const BOXNAME=["linksboven","middenboven","rechtsboven","links in het midden","in het midden","rechts in het midden","linksonder","middenonder","rechtsonder"];
+const houseLabel=h=>h.type==="blok"?`het blok ${BOXNAME[h.n]}`:`${h.type} ${h.n+1}`;
+const cellLabel=i=>`rij ${ROW(i)+1}, kolom ${COL(i)+1}`;
+/* Geeft een hint in 3 niveaus: waar kijken, welk vakje, welk cijfer. */
+function findHint(givens,current,solution){
+  if(current.every(v=>v))return conflicts(current).size?null:{done:true};
+  const cf=conflicts(current);
+  if(cf.size){const i=[...cf].find(j=>!givens[j])??[...cf][0];const h=HOUSES.find(h=>h.type==="rij"&&h.cells.includes(i));
+    return{house:h.cells,cell:i,steps:[`Let op: in ${houseLabel(h)} staat een cijfer dubbel. Kijk daar eerst nog eens.`,`Dit vakje botst met een ander vakje (${cellLabel(i)}).`,`De ${current[i]} in ${cellLabel(i)} kan hier niet: hetzelfde cijfer staat al in dezelfde rij, kolom of blok.`],error:true}}
+  if(solution){const wrong=current.findIndex((v,i)=>v&&!givens[i]&&v!==solution[i]);
+    if(wrong>=0){const h=HOUSES[ROW(wrong)];return{house:h.cells,cell:wrong,error:true,steps:[`Er zit een fout in je puzzel, ergens in rij ${ROW(wrong)+1}.`,`Kijk nog eens naar ${cellLabel(wrong)}.`,`Hier hoort een ${solution[wrong]}, niet een ${current[wrong]}.`]}}}
+  const C=cands(current);
+  for(const order of["blok","rij","kolom"])for(const h of HOUSES.filter(x=>x.type===order)){
+    for(let d=1;d<=9;d++){if(h.cells.some(i=>current[i]===d))continue;const pos=h.cells.filter(i=>!current[i]&&C[i]&(1<<d));
+      if(pos.length===1)return{house:h.cells,cell:pos[0],digit:d,steps:[`Kijk eens naar ${houseLabel(h)}. Het cijfer ${d} kan daar maar op één plek.`,`Het gaat om ${cellLabel(pos[0])}. Waarom kan de ${d} nergens anders in ${houseLabel(h)}?`,`Hier hoort een ${d}.`]}}}
+  for(let i=0;i<81;i++)if(!current[i]&&pop(C[i])===1){const d=bits(C[i])[0],h=HOUSES[18+BOX(i)];
+    return{house:h.cells,cell:i,digit:d,steps:[`In ${houseLabel(h)} is een vakje waar nog maar één cijfer past. Kijk welke cijfers al in de rij, kolom en het blok staan.`,`Kijk naar ${cellLabel(i)}.`,`Alleen een ${d} past hier.`]}}
+  let best=-1,bc=10;for(let i=0;i<81;i++)if(!current[i]){const c=pop(C[i]);if(c<bc){bc=c;best=i}}
+  if(best<0)return null;
+  const list=bits(C[best]).join(", ");const d=solution?solution[best]:null;
+  return{house:HOUSES[18+BOX(best)].cells,cell:best,digit:d,steps:[`Er is nu geen eenvoudige stap. Tip: zet in ${houseLabel(HOUSES[18+BOX(best)])} kleine notities met de cijfers die nog passen.`,`In ${cellLabel(best)} passen nog maar ${bc} cijfers: ${list}. Welke kan hier niet, als je verder kijkt?`,d?`Hier hoort een ${d}.`:`Probeer hier een van deze cijfers: ${list}.`]};
+}
+
+/* ---------- opslag: Claude-database (per persoon) met lokale reserve ---------- */
+const EXAMPLE={id:"voorbeeld-49",title:"Sudoku 49",stars:7,difficultyText:"7 sterren",source:"Voorbeeld uit je puzzelboek",
+  givens:"392100000010080000005006000100908000000000060079340000000004702423000105000000000"};
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+const S={puzzles:new Map(),view:"list",filter:"all",cur:null,sel:-1,mode:"num",undo:[],redo:[],
+  settings:Object.assign({same:true,peers:true,live:false,autonotes:true},ls.get("sudoku-settings",{})),
+  hint:null,msg:null,review:null};
+function decodeNotes(s){const a=new Array(81).fill(0);if(typeof s==="string")for(let i=0;i<81;i++)a[i]=parseInt(s.substr(i*3,3),16)||0;return a}
+const encodeNotes=a=>a.map(n=>n.toString(16).padStart(3,"0")).join("");
+const toArr=s=>[...String(s||"").padEnd(81,".")].slice(0,81).map(c=>/[1-9]/.test(c)?+c:0);
+const toStr=a=>a.map(v=>v||".").join("");
+function normalize(p){return{id:p.id,title:p.title||"Sudoku",created:p.created||Date.now(),updated:p.updated||Date.now(),stars:p.stars??null,difficultyText:p.difficultyText||"",source:p.source||"",
+  givens:toArr(p.givens),entries:toArr(p.entries),notes:decodeNotes(p.notes),colors:String(p.colors||"").padEnd(81,"0").slice(0,81).split("").map(Number),
+  seconds:p.seconds||0,solvedAt:p.solvedAt||null,hints:p.hints||0,solution:null}}
+function serialize(p){return{type:"sudoku",id:p.id,title:p.title,created:p.created,updated:p.updated,stars:p.stars,difficultyText:p.difficultyText,source:p.source,
+  givens:toStr(p.givens),entries:toStr(p.entries),notes:encodeNotes(p.notes),colors:p.colors.join(""),seconds:Math.floor(p.seconds),solvedAt:p.solvedAt,hints:p.hints}}
+function persist(p){p.updated=Date.now();const all=ls.get("sudoku-collection",{});all[p.id]=serialize(p);
+  try{localStorage.setItem("sudoku-collection",JSON.stringify(all))}catch{note("Opslaan in deze browser lukte niet. Misschien is de opslag vol of staat privé-browsen aan.",true)}}
+async function removePuzzle(id){S.puzzles.delete(id);const all=ls.get("sudoku-collection",{});delete all[id];ls.set("sudoku-collection",all)}
+function note(t,warn){const n=$("#storeNote");n.textContent=t||"";n.className="notice"+(warn?" warn":"")}
+function loadLocal(){const all=ls.get("sudoku-collection",{});for(const k in all)S.puzzles.set(k,normalize(all[k]))}
+
+function initRuntime(){note("Je verzameling wordt bewaard in deze browser op dit apparaat.")}
+
+/* ---------- fotoherkenning met je eigen Claude API-sleutel ---------- */
+const KEY_NAME="sudoku-anthropic-key";
+const getKey=()=>{try{return localStorage.getItem(KEY_NAME)||""}catch{return""}};
+const setKey=k=>{try{k?localStorage.setItem(KEY_NAME,k):localStorage.removeItem(KEY_NAME)}catch{}};
+const SDK_URL="./vendor/anthropic-sdk-1.6.0.mjs";
+const blobToB64=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(",")[1]);r.onerror=rej;r.readAsDataURL(b)});
+function parseJSON(t){const a=t.indexOf("{"),b=t.lastIndexOf("}");if(a<0||b<a)throw{code:"bad_output"};return JSON.parse(t.slice(a,b+1))}
+async function readWithClaude(blob,signal){
+  const {default:Anthropic}=await import(SDK_URL);
+  const client=new Anthropic({apiKey:getKey(),dangerouslyAllowBrowser:true});
+  const data=await blobToB64(blob);
+  const media=/^image\/(jpeg|png|gif|webp)$/.test(blob.type)?blob.type:"image/jpeg";
+  const res=await client.beta.messages.create({
+    model:"claude-opus-5-5",
+    max_tokens:16000,
+    betas:["server-side-fallback-2026-07-01"],
+    fallbacks:"default",
+    output_config:{effort:"medium"},
+    messages:[{role:"user",content:[
+      {type:"image",source:{type:"base64",media_type:media,data}},
+      {type:"text",text:READ_PROMPT}]}]
+  },{signal});
+  if(res.stop_reason==="refusal")throw{code:"refusal"};
+  if(res.stop_reason==="max_tokens")throw{code:"bad_output"};
+  return parseJSON(res.content.filter(b=>b.type==="text").map(b=>b.text).join(""));
+}
+function readError(e){
+  const st=e?.status;
+  if(e?.code==="refusal")return"Claude kon deze foto niet verwerken. Probeer een andere foto.";
+  if(e?.code==="bad_output"||e instanceof SyntaxError)return"De cijfers konden niet goed worden uitgelezen. Probeer het nog eens of maak een scherpere foto.";
+  if(st===401)return"Je API-sleutel wordt niet geaccepteerd. Controleer de sleutel bij Instellingen.";
+  if(st===403)return"Je API-sleutel heeft geen toegang. Controleer de sleutel en je account op console.anthropic.com.";
+  if(st===400&&/credit|balance/i.test(e?.message||""))return"Je API-tegoed is op. Vul het aan op console.anthropic.com en probeer het opnieuw.";
+  if(st===429)return"Er zijn even te veel verzoeken. Probeer het over een minuut opnieuw.";
+  if(st>=500)return"Claude is even overbelast. Probeer het over een paar minuten opnieuw.";
+  if(!st&&!navigator.onLine)return"Je bent niet verbonden met internet.";
+  return"Het lezen van de foto is niet gelukt"+(e?.message?" ("+String(e.message).slice(0,140)+")":"")+". Probeer het nog eens of typ de puzzel zelf over.";
+}
+function openKeySheet(after){
+  const has=!!getKey();
+  sheet(`<h2>Fotoherkenning</h2>
+    <p>De app leest je foto's met Claude. Daarvoor heb je een eigen API-sleutel nodig van <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. Een foto lezen kost een paar cent van je API-tegoed.</p>
+    <p class="notice">De sleutel wordt alleen in deze browser bewaard en gaat alleen naar Anthropic. Gebruik dit alleen op je eigen apparaten.</p>
+    <label class="field">API-sleutel<input id="keyIn" type="password" autocomplete="off" spellcheck="false" placeholder="${has?"Sleutel is ingesteld; typ een nieuwe om te vervangen":"sk-ant-..."}"></label>
+    <p class="notice warn" id="keyErr" hidden></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="savekey">Opslaan</button>${has?'<button class="btn danger" type="button" data-act="delkey">Sleutel verwijderen</button>':""}<button class="btn ghost" type="button" data-act="close">Annuleren</button></div>`);
+  keyAfter=after||null;
+}
+let keyAfter=null;
+
+/* ---------- weergave ---------- */
+const main=$("#main");
+function render(){
+  $("#btnList").innerHTML=I.list+"<span>Verzameling</span>";
+  $("#btnPhoto").innerHTML=I.camera+"<span>Foto van sudoku</span>";
+  $("#btnList").hidden=S.view==="list";
+  $("#btnKey").innerHTML=I.gear;
+  if(S.view==="list")renderList();else if(S.view==="play")renderPlay();else if(S.view==="review")renderReview();
+}
+function starsHTML(p){if(!p.stars&&!p.difficultyText)return"";const lbl=p.stars?`${p.stars} ${p.stars===1?"ster":"sterren"}`:p.difficultyText;
+  return`<span class="stars" title="Moeilijkheid: ${esc(p.difficultyText||lbl)}">${I.star}${p.stars?p.stars:esc(p.difficultyText)}<span class="sr"> ${esc(lbl)}</span></span>`}
+function progress(p){const empty=p.givens.filter(v=>!v).length;if(!empty)return 1;let f=0;for(let i=0;i<81;i++)if(!p.givens[i]&&p.entries[i])f++;return f/empty}
+function miniHTML(p){let h="";for(let i=0;i<81;i++){const g=p.givens[i],e=p.entries[i];const cls=(COL(i)%3===2&&COL(i)<8?" bR":"")+(ROW(i)%3===2&&ROW(i)<8?" bB":"");h+=`<span class="${g?"":"e"}${cls}">${g||e||""}</span>`}return`<div class="mini" aria-hidden="true">${h}</div>`}
+function renderList(){
+  const all=[...S.puzzles.values()].sort((a,b)=>b.updated-a.updated);
+  const list=all.filter(p=>S.filter==="all"||(S.filter==="solved"?p.solvedAt:!p.solvedAt));
+  const f=(k,l)=>`<button class="chip" type="button" data-filter="${k}" aria-pressed="${S.filter===k}">${l}</button>`;
+  let h=`<div class="list-head"><h2>Mijn verzameling <span class="notice">(${all.length})</span></h2><div class="tabs">${f("all","Alle")}${f("busy","Bezig")}${f("solved","Opgelost")}</div></div>`;
+  if(!all.length){
+    const ex=normalize(EXAMPLE);
+    h+=`<div class="empty"><h3>Nog geen sudoku's in je verzameling</h3><p class="notice">Maak een foto van een sudoku uit een boekje, krant of app. Kies daarna <b>Digitaliseren</b> om hem hier te bewaren en te spelen, of <b>Hint</b> als je alleen een duwtje in de goede richting wilt.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="photo">${I.camera}Foto maken of kiezen</button><button class="btn" type="button" data-act="manual">${I.grid}Zelf overtypen</button></div></div>
+      <div class="list-head"><h2>Probeer alvast</h2></div><div class="cards">${cardHTML(ex,true)}</div>`;
+  }else if(!list.length)h+=`<p class="notice">Geen puzzels in deze lijst.</p>`;
+  else h+=`<div class="cards">${list.map(p=>cardHTML(p)).join("")}</div>`;
+  main.innerHTML=h;
+}
+function cardHTML(p,example){
+  const pr=progress(p);
+  const st=p.solvedAt?`<span class="pill solved">${I.check.replace('<svg','<svg width="12" height="12"')} Opgelost</span>`:pr>0?`<span class="pill busy">Bezig · ${Math.round(pr*100)}%</span>`:`<span class="pill">Nieuw</span>`;
+  const date=new Date(p.updated).toLocaleDateString("nl-NL",{day:"numeric",month:"short"});
+  return`<button class="card" type="button" data-open="${esc(p.id)}" ${example?'data-example="1"':""}>
+    ${example?'<span class="example-tag">Voorbeeld</span>':""}
+    ${miniHTML(p)}
+    <div class="meta"><h3>${esc(p.title)}</h3>${starsHTML(p)}</div>
+    ${p.solvedAt?"":`<div class="bar" aria-hidden="true"><i style="width:${pr*100}%"></i></div>`}
+    <div class="row">${st}<span>${p.solvedAt?fmtTime(p.seconds):example?esc(p.source):date}</span></div></button>`;
+}
+
+/* ---------- spel ---------- */
+function current(p){return p.givens.map((g,i)=>g||p.entries[i])}
+function openPuzzle(p){
+  S.cur=p;S.sel=p.givens.findIndex(v=>!v);S.undo=[];S.redo=[];S.hint=null;S.msg=null;S.mode="num";
+  if(!p.solution){const r=solve(p.givens,2);p.solution=r.count===1?r.solution:null;p.unique=r.count}
+  S.view="play";render();startTimer();
+}
+function snapshot(){const p=S.cur;return{e:p.entries.slice(),n:p.notes.slice(),c:p.colors.slice()}}
+function pushUndo(){S.undo.push(snapshot());if(S.undo.length>300)S.undo.shift();S.redo=[]}
+function restore(s){const p=S.cur;p.entries=s.e;p.notes=s.n;p.colors=s.c}
+function cellClasses(p,i,cur,C){
+  const sel=S.sel,cls=["cell"];
+  if(COL(i)%3===2&&COL(i)<8)cls.push("bR");if(ROW(i)%3===2&&ROW(i)<8)cls.push("bB");
+  if(p.colors[i])cls.push("k"+p.colors[i]);
+  if(S.hint){if(S.hint.house?.includes(i))cls.push("hh");if(S.hint.level>=1&&S.hint.cell===i)cls.push("hc")}
+  if(sel>=0){if(S.settings.peers&&PEERS[sel].includes(i))cls.push("peer");if(S.settings.same&&cur[sel]&&cur[i]===cur[sel]&&i!==sel)cls.push("same");if(i===sel)cls.push("sel")}
+  if(p.givens[i])cls.push("given");else if(cur[i])cls.push("entry");
+  if(cur[i]&&!p.givens[i]){
+    const showErr=S.settings.live||S.checkShown;
+    if(showErr&&(p.solution?cur[i]!==p.solution[i]:C.has(i)))cls.push("wrong");
+  }
+  if(S.settings.live&&C.has(i))cls.push("conflict");
+  return cls.join(" ");
+}
+function boardHTML(p,cur,editable=true){
+  const C=conflicts(cur);let h="";
+  for(let i=0;i<81;i++){
+    let inner="";
+    if(cur[i])inner=cur[i];
+    else if(p.notes&&p.notes[i]){inner='<span class="notes">';const sv=S.sel>=0?cur[S.sel]:0;for(let d=1;d<=9;d++)inner+=`<span class="${p.notes[i]&(1<<d)&&sv===d&&S.settings.same?"on-same":""}">${p.notes[i]&(1<<d)?d:""}</span>`;inner+="</span>"}
+    const lbl=`${cellLabel(i)}${cur[i]?": "+cur[i]:": leeg"}${p.givens[i]?" (gegeven)":""}`;
+    h+=`<button type="button" class="${cellClasses(p,i,cur,C)}" data-cell="${i}" aria-label="${lbl}" tabindex="${i===Math.max(0,S.sel)?0:-1}">${inner}</button>`;
+  }
+  return`<div class="boardbox"><div class="board" role="grid" aria-label="Sudoku-raster" id="board">${h}</div></div>`;
+}
+function renderPlay(){
+  const p=S.cur,cur=current(p);
+  const counts=Array(10).fill(0);cur.forEach(v=>v&&counts[v]++);
+  let pad="";
+  if(S.mode==="color"){
+    pad=[0,1,2,3,4,5,6].map(k=>k===0?`<button type="button" class="swatch none" data-color="0">Geen</button>`:`<button type="button" class="swatch cell k${k}" data-color="${k}" aria-label="Kleur ${k}"></button>`).join("");
+    pad=`<div class="padgrid" style="grid-template-columns:repeat(4,1fr)">${pad}</div>`;
+  }else{
+    const keys=[1,2,3,"m1",4,5,6,"m2",7,8,9,"m3"].map(k=>{
+      if(k==="m1")return`<button type="button" class="mode" data-mode="num" aria-pressed="${S.mode==="num"}" title="Cijfers invullen"><span class="big">9</span></button>`;
+      if(k==="m2")return`<button type="button" class="mode" data-mode="note" aria-pressed="${S.mode==="note"}" title="Notities (kleine cijfers)"><span class="small"><span>1</span><span>2</span><span>3</span></span></button>`;
+      if(k==="m3")return`<button type="button" class="mode" data-mode="color" aria-pressed="${S.mode==="color"}" title="Vakjes kleuren">${I.palette}</button>`;
+      const left=9-counts[k];
+      return`<button type="button" class="key${S.mode==="note"?" notekey":""}${left<=0?" done":""}" data-digit="${k}" aria-label="Cijfer ${k}">${k}<span class="left">${left>0?left:""}</span></button>`;
+    }).join("");
+    pad=`<div class="padgrid">${keys}<button type="button" class="key wide" data-act="erase" aria-label="Wissen">${I.erase.replace('<svg','<svg width="30" height="30"')}</button></div>`;
+  }
+  if(S.mode==="color")pad+=`<div class="padgrid" style="grid-template-columns:repeat(3,1fr)"><button type="button" class="mode" data-mode="num" aria-pressed="false" style="height:54px"><span class="big">9</span></button><button type="button" class="mode" data-mode="note" aria-pressed="false"><span class="small"><span>1</span><span>2</span><span>3</span></span></button><button type="button" class="mode" data-mode="color" aria-pressed="true">${I.palette}</button></div>`;
+  let hint="";
+  if(S.hint){const H=S.hint;hint=`<div class="hintcard" role="status"><span class="lvl">Hint ${H.level+1} van ${H.steps.length}</span><p>${esc(H.steps[H.level])}</p>
+    <div class="acts">${H.level<H.steps.length-1?`<button class="btn" type="button" data-act="hintmore">${I.bulb}Meer hulp</button>`:""}<button class="btn ghost" type="button" data-act="hintclose">Sluiten</button></div></div>`}
+  const msg=S.msg?`<div class="msg ${S.msg.kind}" role="status">${esc(S.msg.text)}</div>`:"";
+  const uniq=p.unique===0?`<div class="msg bad">Deze puzzel heeft geen oplossing. Misschien is een cijfer verkeerd overgenomen. Controleer de puzzel met je foto.</div>`:p.unique>1?`<div class="msg info">Deze puzzel heeft meer dan één oplossing. Controleren gebeurt op de regels.</div>`:"";
+  main.innerHTML=`<div class="play">
+    <section class="boardcol">
+      <div class="board-head"><h2>${esc(p.title)}</h2>${starsHTML(p)}<span class="timer" id="timer" aria-label="Speeltijd">${fmtTime(p.seconds)}</span></div>
+      ${boardHTML(p,cur)}
+      ${uniq}
+      ${p.source?`<p class="notice">${esc(p.source)}${p.hints?` · ${p.hints} hint${p.hints>1?"s":""} gebruikt`:""}</p>`:""}
+    </section>
+    <aside class="panel" aria-label="Bediening">
+      <div class="toolrow">
+        <button class="tool" type="button" data-act="settings">${I.gear}<span>Instellingen</span></button>
+        <button class="tool" type="button" data-act="list">${I.list}<span>Verzameling</span></button>
+        <button class="tool" type="button" data-act="hint">${I.help}<span>Hint</span></button>
+        <button class="tool" type="button" data-act="restart">${I.restart}<span>Opnieuw</span></button>
+      </div>
+      ${hint}${msg}
+      ${pad}
+      <div class="botrow">
+        <button class="tool" type="button" data-act="undo" ${S.undo.length?"":"disabled"}>${I.undo}<span>Terug</span></button>
+        <button class="tool" type="button" data-act="redo" ${S.redo.length?"":"disabled"}>${I.redo}<span>Vooruit</span></button>
+        <button class="tool" type="button" data-act="check">${I.check}<span>Controleer</span></button>
+      </div>
+    </aside></div>`;
+}
+function input(d){
+  const p=S.cur;if(!p||S.sel<0)return;const i=S.sel;
+  if(S.mode==="color"){pushUndo();p.colors[i]=d;after();return}
+  if(p.givens[i]||p.solvedAt)return;
+  pushUndo();
+  if(S.mode==="note"&&d){if(p.entries[i])return S.undo.pop();p.notes[i]^=(1<<d)}
+  else if(!d){if(p.entries[i])p.entries[i]=0;else p.notes[i]=0}
+  else{p.entries[i]=p.entries[i]===d?0:d;
+    if(p.entries[i]&&S.settings.autonotes)for(const q of PEERS[i])p.notes[q]&=~(1<<d)}
+  after(true);
+}
+function after(changed){
+  const p=S.cur;S.msg=null;S.checkShown=false;
+  if(S.hint&&changed)S.hint=null;
+  const cur=current(p);
+  if(changed&&cur.every(v=>v)&&!p.solvedAt){
+    if(isSolved(p,cur)){p.solvedAt=Date.now();persist(p,true);render();celebrate(p);return}
+    S.msg={kind:"bad",text:"Alle vakjes zijn gevuld, maar er klopt nog iets niet. Tik op Controleer om de fouten te zien."};
+  }
+  persist(p);render();focusSel();
+}
+function isSolved(p,cur){if(conflicts(cur).size)return false;if(!cur.every(v=>v))return false;return p.solution?cur.every((v,i)=>v===p.solution[i]):true}
+function focusSel(){const el=main.querySelector(`[data-cell="${S.sel}"]`);if(el&&document.activeElement?.dataset?.cell!==undefined)el.focus({preventScroll:true})}
+function check(){
+  const p=S.cur,cur=current(p);
+  if(isSolved(p,cur)){if(!p.solvedAt){p.solvedAt=Date.now();persist(p,true)}render();celebrate(p);return}
+  const C=conflicts(cur);let wrong=0;
+  for(let i=0;i<81;i++)if(cur[i]&&!p.givens[i]&&(p.solution?cur[i]!==p.solution[i]:C.has(i)))wrong++;
+  const left=cur.filter(v=>!v).length;
+  S.checkShown=wrong>0;
+  S.msg=wrong?{kind:"bad",text:`${wrong} ${wrong===1?"cijfer klopt":"cijfers kloppen"} niet. Ze zijn rood onderstreept.`}:{kind:"good",text:`Alles klopt tot nu toe. Nog ${left} ${left===1?"vakje":"vakjes"} te gaan.`};
+  render();
+}
+function hint(){
+  const p=S.cur;
+  if(S.hint){if(S.hint.level<S.hint.steps.length-1){S.hint.level++;render()}return}
+  const h=findHint(p.givens,current(p),p.solution);
+  if(!h){S.msg={kind:"info",text:"Ik kan op dit moment geen hint geven."};render();return}
+  if(h.done){S.msg={kind:"good",text:"De puzzel is al helemaal ingevuld."};render();return}
+  h.level=0;S.hint=h;p.hints++;persist(p);render();
+}
+/* timer */
+let tick=null,last=0;
+function startTimer(){clearInterval(tick);last=performance.now();tick=setInterval(()=>{
+  const now=performance.now(),dt=(now-last)/1000;last=now;
+  if(S.view!=="play"||!S.cur||S.cur.solvedAt||document.hidden||S.paused)return;
+  S.cur.seconds+=Math.min(dt,2);const t=$("#timer");if(t)t.textContent=fmtTime(S.cur.seconds);
+  if(Math.floor(S.cur.seconds)%15===0)persist(S.cur);
+},1000)}
+
+/* ---------- foto: hint of digitaliseren ---------- */
+const overlay=$("#overlay");
+let photo=null; // {blob,url}
+function closeSheet(){overlay.innerHTML=""}
+function sheet(html,cls=""){overlay.innerHTML=`<div class="sheet-back ${cls}" data-act="closebg"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;overlay.querySelector(".sheet button, .sheet input")?.focus()}
+function openPhotoSheet(){
+  const noVision=!getKey();
+  if(!photo){sheet(`<h2>Foto van een sudoku</h2>
+    <div class="drop">${I.camera}<div>Maak een foto of kies er een uit je fotorol. Zorg dat het hele raster erop staat.</div>
+    <button class="btn primary" type="button" data-act="pick">${I.camera}Foto maken of kiezen</button></div>
+    ${noVision?`<p class="notice">Om foto's te laten lezen heb je eenmalig een Claude API-sleutel nodig. <button class="btn ghost" type="button" data-act="key" style="padding:2px 4px;text-decoration:underline">Sleutel instellen</button></p>`:""}
+    <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button class="btn" type="button" data-act="manual">${I.grid}Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Annuleren</button></div>`);return}
+  sheet(`<h2>Wat wil je met deze foto?</h2><img class="preview" src="${photo.url}" alt="Je foto van de sudoku">
+    <div class="choice">
+      <button type="button" data-act="read-hint">${I.bulb}<b>Geef een hint</b><span>Alleen een tip voor de volgende stap. De puzzel wordt niet bewaard.</span></button>
+      <button type="button" data-act="read-digi">${I.grid}<b>Digitaliseren</b><span>Zet de puzzel in je verzameling, met moeilijkheid als die op de foto staat.</span></button>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button class="btn" type="button" data-act="pick">Andere foto</button><button class="btn ghost" type="button" data-act="close">Annuleren</button></div>`);
+}
+async function prepImage(file){
+  const bmp=await createImageBitmap(file).catch(()=>null);
+  if(!bmp)return file;
+  const max=1600,sc=Math.min(1,max/Math.max(bmp.width,bmp.height));
+  const c=document.createElement("canvas");c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);
+  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+  return await new Promise(r=>c.toBlob(b=>r(b||file),"image/jpeg",.9));
+}
+const READ_PROMPT=`You are reading a photo of a 9x9 sudoku puzzle. The photo may be taken at an angle, may be rotated (for example a tablet photographed sideways), and may show a printed puzzle book page or a puzzle app on a screen.
+Orient the grid so that the text around it reads normally, then read every cell row by row from top-left.
+For each cell output a digit 1-9, or "." if the cell is empty.
+Also say for each filled cell whether it is a printed/original clue ("P") or a digit added later by the solver ("H": handwriting, pencil, or on screens a different colour/weight than the clues).
+Ignore faint digits that show through from the other side of the paper, and ignore tiny pencil-mark candidates in corners.
+Look for a difficulty indication anywhere on the page or screen: a number of stars (a star badge containing the number 7 means 7 stars; a row of 4 filled stars means 4), words like "makkelijk", "gemiddeld", "moeilijk", "expert", "level 3", "niveau 5". Look also for a puzzle number or name (e.g. a number printed under the grid, "Puzzle 2").
+Answer with only JSON in exactly this shape:
+{"found":true,"rows":["392......", ... 9 strings of 9 characters],"kinds":["PPP......", ... 9 strings, P/H/. matching rows],"stars":7,"difficultyText":"7 sterren","title":"49"}
+Use null for stars, difficultyText or title when there is none. difficultyText is a short Dutch phrase as the user would say it (e.g. "7 sterren", "Moeilijk", "Niveau 3"). If there is no sudoku in the photo, answer {"found":false}. Output only the JSON object, with no other text.`;
+async function readPhoto(mode){
+  if(!getKey()){openKeySheet(mode);return}
+  const ctl=new AbortController();
+  sheet(`<h2>${mode==="hint"?"Even kijken…":"Puzzel overnemen…"}</h2><img class="preview" src="${photo.url}" alt="">
+    <div class="busyline"><div class="spinner" aria-hidden="true"></div><span id="busyTxt">Claude leest de cijfers van je foto. Dit duurt meestal 20 tot 60 seconden.</span></div>
+    <div><button class="btn" type="button" id="stopRead">Stoppen</button></div>`);
+  $("#stopRead").onclick=()=>{ctl.abort();closeSheet()};
+  try{
+    const r=await readWithClaude(photo.blob,ctl.signal);
+    if(!r||r.found===false||!Array.isArray(r.rows)){sheet(`<h2>Geen sudoku gevonden</h2><p>Ik zie geen volledig sudoku-raster op deze foto. Probeer een nieuwe foto, recht van boven en met het hele raster in beeld.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="pick">Nieuwe foto</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button></div>`);return}
+    const rows=r.rows.map(s=>String(s).replace(/[^1-9.0 ]/g,"").replace(/[0 ]/g,".").padEnd(9,".").slice(0,9)).concat(Array(9).fill(".........")).slice(0,9).join("");
+    const kinds=(Array.isArray(r.kinds)?r.kinds:[]).map(s=>String(s).padEnd(9,".").slice(0,9)).concat(Array(9).fill(".........")).slice(0,9).join("");
+    const digits=toArr(rows);const kind=digits.map((v,i)=>v?(kinds[i]==="H"?"H":"P"):"");
+    const stars=Number.isFinite(+r.stars)&&+r.stars>0&&+r.stars<=20?Math.round(+r.stars):null;
+    S.review={mode,digits,kind,stars,difficultyText:r.difficultyText?String(r.difficultyText).slice(0,40):(stars?`${stars} sterren`:""),
+      title:r.title?(/^\d+$/.test(String(r.title))?"Sudoku "+r.title:String(r.title).slice(0,40)):"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),
+      photo:photo.url,hintState:null,sel:-1};
+    closeSheet();S.view="review";S.sel=-1;render();window.scrollTo(0,0);
+  }catch(e){
+    if(ctl.signal.aborted)return;
+    const why=readError(e);
+    sheet(`<h2>Dat lukte niet</h2><p>${esc(why)}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${mode==="hint"?"read-hint":"read-digi"}">Opnieuw proberen</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Sluiten</button></div>`);
+  }
+}
+function startManual(){closeSheet();S.review={mode:"digi",digits:Array(81).fill(0),kind:Array(81).fill(""),stars:null,difficultyText:"",title:"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),photo:photo?.url||null,sel:0};S.view="review";render()}
+function reviewStatus(R){
+  const givens=R.digits.map((v,i)=>R.kind[i]==="P"?v:0);const all=R.digits;
+  const cf=conflicts(all);
+  const nGiven=givens.filter(Boolean).length;
+  if(cf.size)return{kind:"bad",text:"Er staan dubbele cijfers in een rij, kolom of blok (rood omrand). Vergelijk met je foto en verbeter ze.",solution:null,cf};
+  if(nGiven<17)return{kind:"info",text:`${nGiven} cijfers ingevuld. Een sudoku heeft er minstens 17 nodig.`,solution:null,cf};
+  const r=solve(givens,2);
+  if(r.count===0)return{kind:"bad",text:"Met deze cijfers is de puzzel niet op te lossen. Waarschijnlijk is een cijfer verkeerd gelezen.",solution:null,cf};
+  const r2=solve(all,1);
+  if(r.count>1)return{kind:"info",text:"Let op: met deze cijfers heeft de puzzel meer dan één oplossing. Controleer of alle cijfers kloppen.",solution:null,cf,givens};
+  if(r2.count===0)return{kind:"bad",text:"De gedrukte cijfers kloppen, maar een van de zelf ingevulde cijfers is fout.",solution:r.solution,cf,givens};
+  return{kind:"good",text:"Alle cijfers gelezen. De puzzel heeft precies één oplossing.",solution:r.solution,cf,givens};
+}
+function renderReview(){
+  const R=S.review,st=reviewStatus(R);
+  const fake={givens:R.digits.map((v,i)=>R.kind[i]==="P"?v:0),entries:R.digits.map((v,i)=>R.kind[i]==="H"?v:0),notes:Array(81).fill(0),colors:Array(81).fill(0),solution:null};
+  const savedSel=S.sel;S.sel=R.sel;const savedHint=S.hint;
+  if(R.mode==="hint"&&R.hintState)S.hint=R.hintState;else S.hint=null;
+  const prevLive=S.settings.live;S.settings.live=true;
+  const board=boardHTML(fake,R.digits);
+  S.settings.live=prevLive;S.hint=savedHint;S.sel=savedSel;
+  const keys=[1,2,3,4,5,6,7,8,9].map(k=>`<button type="button" class="key" data-rdigit="${k}">${k}</button>`).join("");
+  let side="";
+  if(R.mode==="hint"){
+    const H=R.hintState;
+    side=`<div class="hintcard" role="status">${H?(H.done?`<p>Deze puzzel is al opgelost. Knap gedaan!</p>`:`<span class="lvl">Hint ${H.level+1} van ${H.steps.length}</span><p>${esc(H.steps[H.level])}</p>${H.level<H.steps.length-1?`<div class="acts"><button class="btn" type="button" data-act="rhintmore">${I.bulb}Meer hulp</button></div>`:""}`):`<p>Kon geen hint maken. Controleer of de cijfers goed zijn gelezen.</p>`}</div>
+      <p class="notice">Klopt een cijfer niet met je foto? Tik het vakje aan en kies het goede cijfer. De hint past zich aan.</p>
+      <button class="btn" type="button" data-act="todigi">${I.grid}Toch digitaliseren</button>`;
+  }else{
+    side=`<div class="fields"><label class="field">Naam<input id="rTitle" value="${esc(R.title)}"></label>
+      <label class="field">Sterren<input id="rStars" type="number" min="0" max="20" inputmode="numeric" value="${R.stars??""}" placeholder="–"></label></div>
+      <label class="field">Moeilijkheid (zoals op de foto)<input id="rDiff" value="${esc(R.difficultyText)}" placeholder="bijv. 7 sterren of Moeilijk"></label>
+      <button class="btn primary" type="button" data-act="savedigi">${I.check}Toevoegen aan verzameling</button>`;
+  }
+  main.innerHTML=`<div class="play">
+    <section class="boardcol">
+      <div class="board-head"><h2>${R.mode==="hint"?"Hint voor je puzzel":"Controleer de cijfers"}</h2>${R.stars||R.difficultyText?starsHTML(R):""}</div>
+      ${board}
+      <div class="legend"><span><b>5</b> gedrukt cijfer</span><span><b style="color:var(--entry)">5</b> zelf ingevuld</span></div>
+    </section>
+    <aside class="panel">
+      ${R.photo?`<img class="photo-ref" src="${R.photo}" alt="Je foto ter vergelijking">`:""}
+      <div class="msg ${st.kind}">${esc(st.text)}</div>
+      ${side}
+      <div class="padgrid" style="grid-template-columns:repeat(3,1fr)">${keys}
+        <button type="button" class="tool" data-act="rkind" style="aspect-ratio:auto;height:54px">${I.pencil}<span>Gedrukt / zelf</span></button>
+        <button type="button" class="tool" data-act="rerase" style="aspect-ratio:auto;height:54px">${I.erase}<span>Wissen</span></button>
+        <button type="button" class="tool" data-act="list" style="aspect-ratio:auto;height:54px">${I.list}<span>Annuleren</span></button>
+      </div>
+    </aside></div>`;
+  R.status=st;
+}
+function reviewHint(){const R=S.review,st=reviewStatus(R);
+  const givens=st.givens||R.digits.map((v,i)=>R.kind[i]==="P"?v:0);
+  const h=findHint(givens,R.digits,st.solution);R.hintState=h?Object.assign(h,{level:0}):null}
+function reviewInput(d){const R=S.review;if(R.sel<0)return;R.digits[R.sel]=d;R.kind[R.sel]=d?(R.kind[R.sel]||(R.mode==="hint"?"H":"P")):"";if(R.mode==="hint")reviewHint();renderReview();main.querySelector(`[data-cell="${R.sel}"]`)?.focus({preventScroll:true})}
+function saveDigitized(){
+  const R=S.review,t=$("#rTitle"),s=$("#rStars"),d=$("#rDiff");
+  const stars=s&&s.value!==""?Math.max(0,Math.min(20,parseInt(s.value)||0))||null:null;
+  const p=normalize({id:uid(),title:(t?.value||R.title).trim()||"Sudoku",stars,difficultyText:(d?.value||"").trim()||(stars?`${stars} sterren`:""),
+    source:R.photo?"Gedigitaliseerd van foto op "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long",year:"numeric"}):"Zelf ingevoerd",
+    givens:toStr(R.digits.map((v,i)=>R.kind[i]==="P"?v:0)),entries:toStr(R.digits.map((v,i)=>R.kind[i]==="H"?v:0))});
+  if(p.givens.filter(Boolean).length<17){R.status={};const m=main.querySelector(".msg");if(m){m.className="msg bad";m.textContent="Vul eerst minstens 17 gedrukte cijfers in."}return}
+  S.puzzles.set(p.id,p);persist(p,true);S.review=null;photo=null;openPuzzle(p);
+}
+
+/* ---------- instellingen & bevestigingen ---------- */
+function openSettings(){
+  const row=(k,l,d)=>`<label class="setrow"><span>${l}<br><span class="notice">${d}</span></span><input type="checkbox" id="set-${k}" data-set="${k}" ${S.settings[k]?"checked":""}></label>`;
+  sheet(`<h2>Instellingen</h2>${row("same","Markeer gelijke cijfers","Licht alle vakjes met hetzelfde cijfer op.")}${row("peers","Markeer rij, kolom en blok","Toon de vakjes die bij het gekozen vakje horen.")}${row("live","Fouten meteen tonen","Een fout cijfer wordt direct rood. Uit: alleen na Controleer.")}${row("autonotes","Notities automatisch bijwerken","Haalt een cijfer uit de notities van de buren als je het invult.")}
+  <div class="setrow"><span>Fotoherkenning<br><span class="notice">${getKey()?"API-sleutel is ingesteld.":"Nog geen API-sleutel ingesteld."}</span></span><button class="btn" type="button" data-act="key">Sleutel</button></div>
+  <div class="setrow" style="border:0"><span>Puzzel verwijderen uit je verzameling</span><button class="btn danger" type="button" data-act="askdelete">Verwijderen</button></div>
+  <div><button class="btn primary" type="button" data-act="close">Klaar</button></div>`)}
+function confirmSheet(title,text,okLabel,okAct){sheet(`<h2>${title}</h2><p>${text}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${okAct}">${okLabel}</button><button class="btn" type="button" data-act="close">Annuleren</button></div>`)}
+
+/* ---------- feest ---------- */
+function celebrate(p){
+  const H=p.hints?` met ${p.hints} hint${p.hints>1?"s":""}`:" zonder hints";
+  sheet(`<div class="trophy">${I.trophy}</div><h2>Gefeliciteerd!</h2>
+    <p>Je hebt <b>${esc(p.title)}</b> opgelost in <b>${fmtTime(p.seconds)}</b>${H}.</p>${p.stars||p.difficultyText?`<p class="big-stars">${starsHTML(p)} ${p.stars>=6?"Een echte moeilijke, top!":""}</p>`:""}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn primary" type="button" data-act="list">Naar verzameling</button><button class="btn" type="button" data-act="close">Bekijk de puzzel</button></div>`,"party");
+  confetti();
+}
+function confetti(){
+  const cv=$("#confetti");if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  cv.hidden=false;const ctx=cv.getContext("2d"),W=cv.width=innerWidth*devicePixelRatio,Hh=cv.height=innerHeight*devicePixelRatio;
+  const cols=["#4a3fc4","#f2a516","#ef5b6b","#5cc477","#4f9cf0","#ffd34d","#9c74f0"];
+  const parts=[...Array(220)].map((_,k)=>({x:W*(k%2?0.15:0.85),y:Hh*0.65,vx:(Math.random()-.5)*W*0.018+(k%2?1:-1)*W*0.006,vy:-Math.random()*Hh*0.03-Hh*0.012,s:(6+Math.random()*8)*devicePixelRatio,r:Math.random()*6,vr:(Math.random()-.5)*.3,c:cols[k%cols.length],sh:k%3}));
+  const t0=performance.now();
+  (function frame(t){const el=t-t0;ctx.clearRect(0,0,W,Hh);
+    for(const p of parts){p.vy+=Hh*0.0006;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;ctx.globalAlpha=Math.max(0,1-el/4500);
+      if(p.sh===0)ctx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);else if(p.sh===1){ctx.beginPath();ctx.arc(0,0,p.s/3,0,7);ctx.fill()}else{ctx.font=`${p.s*1.6}px Outfit,sans-serif`;ctx.fillText(String(1+(Math.abs(p.x|0)%9)),0,0)}ctx.restore()}
+    if(el<4500)requestAnimationFrame(frame);else{ctx.clearRect(0,0,W,Hh);cv.hidden=true}})(t0);
+}
+
+/* ---------- gebeurtenissen ---------- */
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button,[data-act]");if(!t)return;
+  if(t.dataset.act==="closebg"&&e.target!==t)return;
+  if(t.id==="btnList"){goList();return}
+  if(t.id==="btnPhoto"){openPhotoSheet();return}
+  if(t.id==="btnKey"){openKeySheet();return}
+  if(t.dataset.filter){S.filter=t.dataset.filter;render();return}
+  if(t.dataset.open){let p=S.puzzles.get(t.dataset.open);
+    if(!p&&t.dataset.example){p=normalize(Object.assign({},EXAMPLE,{id:uid()}));S.puzzles.set(p.id,p);persist(p,true)}
+    if(p)openPuzzle(p);return}
+  if(t.dataset.cell!==undefined){const i=+t.dataset.cell;if(S.view==="review"){S.review.sel=i;renderReview()}else{S.sel=i;render()}main.querySelector(`[data-cell="${i}"]`)?.focus({preventScroll:true});return}
+  if(t.dataset.digit){input(+t.dataset.digit);return}
+  if(t.dataset.color!==undefined){input(+t.dataset.color);return}
+  if(t.dataset.mode){S.mode=t.dataset.mode;render();return}
+  if(t.dataset.rdigit){reviewInput(+t.dataset.rdigit);return}
+  const a=t.dataset.act;
+  switch(a){
+    case"close":case"closebg":closeSheet();break;
+    case"photo":openPhotoSheet();break;
+    case"pick":$("#fileIn").value="";$("#fileIn").click();break;
+    case"manual":startManual();break;
+    case"read-hint":readHint();break;
+    case"read-digi":readPhoto("digi");break;
+    case"list":closeSheet();goList();break;
+    case"erase":input(0);break;
+    case"undo":if(S.undo.length){S.redo.push(snapshot());restore(S.undo.pop());after(true)}break;
+    case"redo":if(S.redo.length){S.undo.push(snapshot());restore(S.redo.pop());after(true)}break;
+    case"check":check();break;
+    case"hint":case"hintmore":hint();break;
+    case"hintclose":S.hint=null;render();break;
+    case"settings":openSettings();break;
+    case"restart":confirmSheet("Opnieuw beginnen?","Al je ingevulde cijfers, notities en kleuren worden gewist. De tijd begint weer bij 0.","Opnieuw beginnen","dorestart");break;
+    case"dorestart":{const p=S.cur;pushUndo();p.entries.fill(0);p.notes.fill(0);p.colors.fill(0);p.seconds=0;p.solvedAt=null;p.hints=0;S.hint=null;closeSheet();after(true);break}
+    case"askdelete":confirmSheet("Puzzel verwijderen?",`“${esc(S.cur?.title)}” verdwijnt uit je verzameling. Dit kun je niet ongedaan maken.`,"Verwijderen","dodelete");break;
+    case"dodelete":{const id=S.cur.id;closeSheet();S.cur=null;S.view="list";removePuzzle(id).then(render);render();break}
+    case"rhintmore":{const H=S.review.hintState;if(H&&H.level<H.steps.length-1)H.level++;renderReview();break}
+    case"todigi":S.review.mode="digi";S.review.digits.forEach((v,i)=>{if(v&&!S.review.kind[i])S.review.kind[i]="P"});renderReview();break;
+    case"rkind":{const R=S.review;if(R.sel>=0&&R.digits[R.sel]){R.kind[R.sel]=R.kind[R.sel]==="P"?"H":"P";if(R.mode==="hint")reviewHint();renderReview()}break}
+    case"rerase":reviewInput(0);break;
+    case"savedigi":saveDigitized();break;
+    case"key":openKeySheet();break;
+    case"delkey":setKey("");closeSheet();break;
+    case"savekey":{const v=($("#keyIn")?.value||"").trim();const err=$("#keyErr");
+      if(!v){if(getKey()){closeSheet();break}err.hidden=false;err.textContent="Vul je API-sleutel in.";break}
+      if(!/^sk-ant-/.test(v)){err.hidden=false;err.textContent="Een Claude API-sleutel begint met sk-ant-. Controleer of je de hele sleutel hebt geplakt.";break}
+      setKey(v);const m=keyAfter;keyAfter=null;closeSheet();
+      if(m&&photo)document.dispatchEvent(new CustomEvent("readphoto",{detail:m}));else if(photo)openPhotoSheet();break}
+  }
+});
+document.addEventListener("change",e=>{
+  if(e.target.id==="fileIn"&&e.target.files[0]){const f=e.target.files[0];
+    prepImage(f).then(b=>{if(photo)URL.revokeObjectURL(photo.url);photo={blob:b,url:URL.createObjectURL(b)};openPhotoSheet()});return}
+  if(e.target.dataset.set){S.settings[e.target.dataset.set]=e.target.checked;ls.set("sudoku-settings",S.settings);if(S.view==="play")render()}
+});
+document.addEventListener("input",e=>{if(!S.review)return;if(e.target.id==="rTitle")S.review.title=e.target.value;if(e.target.id==="rDiff")S.review.difficultyText=e.target.value;if(e.target.id==="rStars")S.review.stars=e.target.value?+e.target.value:null});
+document.addEventListener("keydown",e=>{
+  if(overlay.innerHTML){if(e.key==="Escape")closeSheet();return}
+  if(e.target.matches("input"))return;
+  const inReview=S.view==="review",inPlay=S.view==="play";if(!inReview&&!inPlay)return;
+  let sel=inReview?S.review.sel:S.sel;
+  const mv={ArrowUp:-9,ArrowDown:9,ArrowLeft:-1,ArrowRight:1}[e.key];
+  if(mv){e.preventDefault();sel=sel<0?0:sel;const r=ROW(sel),c=COL(sel);
+    const nr=(r+(mv===-9?-1:mv===9?1:0)+9)%9,nc=(c+(mv===-1?-1:mv===1?1:0)+9)%9;sel=nr*9+nc;
+    if(inReview){S.review.sel=sel;renderReview()}else{S.sel=sel;render()}
+    main.querySelector(`[data-cell="${sel}"]`)?.focus({preventScroll:true});return}
+  if(/^[1-9]$/.test(e.key)){e.preventDefault();inReview?reviewInput(+e.key):input(+e.key);return}
+  if(e.key==="Backspace"||e.key==="Delete"||e.key==="0"){e.preventDefault();inReview?reviewInput(0):input(0);return}
+  if(inPlay&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();document.querySelector(`[data-act="${e.shiftKey?"redo":"undo"}"]`)?.click();return}
+  if(inPlay&&e.key.toLowerCase()==="n"){S.mode=S.mode==="note"?"num":"note";render()}
+});
+function goList(){if(S.cur)persist(S.cur,true);S.view="list";S.cur=null;S.review=null;S.hint=null;render();window.scrollTo(0,0)}
+
+function readHint(){readPhoto("hint").then(()=>{if(S.view==="review"&&S.review&&S.review.mode==="hint"){reviewHint();renderReview()}})}
+document.addEventListener("readphoto",e=>e.detail==="hint"?readHint():readPhoto("digi"));
+loadLocal();render();initRuntime();
+})();
+</script>
+</body>
+</html>
