@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Maak een foto van een sudoku: vraag een hint of zet hem in je verzameling.">
 <title>Sudoku Schrift</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#4a3fc4">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sudoku">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap">
 <style>
@@ -144,6 +153,14 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .group-h:first-child{margin-top:4px}
 .group-h .cnt{color:var(--muted);font-weight:400;font-size:13px}
 .sortsel{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+
+.install{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;background:var(--paper);border:1px dashed var(--accent);border-radius:16px;padding:14px 16px}
+.install img{width:48px;height:48px;border-radius:11px}
+.install b{font-family:var(--f-display);font-size:17px;display:block}
+.install p{margin:2px 0 0;font-size:13.5px;color:var(--muted)}
+.install .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:560px){.install{grid-template-columns:auto minmax(0,1fr)}.install .acts{grid-column:1 / -1;justify-content:flex-start}}
+.kbd{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:6px;padding:0 5px;background:var(--bg);font-weight:600;color:var(--ink);white-space:nowrap}
 
 /* Speelveld */
 .play{display:grid;grid-template-columns:minmax(0,600px) minmax(260px,320px);gap:24px;align-items:start;justify-content:center}
@@ -295,6 +312,7 @@ const I={
  pause:'<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
  bulb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>',
  upload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>',
+ share:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>',
  pencil:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>'
 };
 const $=s=>document.querySelector(s);
@@ -437,6 +455,24 @@ function starsHTML(p){if(!p.stars&&!p.difficultyText)return"";const lbl=p.stars?
   return`<span class="stars" title="Moeilijkheid: ${esc(p.difficultyText||lbl)}">${I.star}${p.stars?p.stars:esc(p.difficultyText)}<span class="sr"> ${esc(lbl)}</span></span>`}
 function progress(p){const empty=p.givens.filter(v=>!v).length;if(!empty)return 1;let f=0;for(let i=0;i<81;i++)if(!p.givens[i]&&p.entries[i])f++;return f/empty}
 function miniHTML(p){let h="";for(let i=0;i<81;i++){const g=p.givens[i],e=p.entries[i];const cls=(COL(i)%3===2&&COL(i)<8?" bR":"")+(ROW(i)%3===2&&ROW(i)<8?" bB":"");h+=`<span class="${g?"":"e"}${cls}">${g||e||""}</span>`}return`<div class="mini" aria-hidden="true">${h}</div>`}
+/* ---------- installeren als app ---------- */
+let installEvt=null;
+const isStandalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
+const isAndroid=()=>/Android/i.test(navigator.userAgent);
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEvt=e;if(S.view==="home")render()});
+window.addEventListener("appinstalled",()=>{installEvt=null;ls.set("sudoku-install-hide",true);if(S.view==="home")render()});
+if("serviceWorker" in navigator&&location.protocol!=="file:")window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+function installCard(){
+  if(isStandalone()||ls.get("sudoku-install-hide",false))return"";
+  let how,btn="";
+  if(installEvt){how="Zet Sudoku Schrift als app op je beginscherm. Hij opent dan schermvullend en werkt ook zonder internet.";btn=`<button class="btn primary" type="button" data-act="install">App installeren</button>`}
+  else if(isIOS())how=`Tik in Safari op <span class="kbd">Deel ${I.share}</span> en kies <span class="kbd">Zet op beginscherm</span>.`;
+  else if(isAndroid())how=`Tik in Chrome op <span class="kbd">⋮</span> en kies <span class="kbd">App installeren</span> of <span class="kbd">Toevoegen aan startscherm</span>.`;
+  else return"";
+  return`<section class="install" aria-label="Installeren als app"><img src="icons/icon-192.png" alt=""><div><b>Installeer als app</b><p>${how}</p></div><div class="acts">${btn}<button class="btn ghost" type="button" data-act="installhide">Niet nu</button></div></section>`;
+}
+
 /* ---------- puzzels maken ---------- */
 const LEVELS=[
   {key:"easy",name:"Makkelijk",stars:1,givens:40,desc:"Veel cijfers gegeven. Goed om rustig te beginnen."},
@@ -505,7 +541,7 @@ function renderHome(){
         <span class="btn primary go">Verder</span></span></button></section>`}
   const photoHero=`<section class="photo-hero" aria-label="Foto van een sudoku">${I.camera}<div><b>Sudoku uit een boekje of app?</b><p>Maak een foto of upload er een. Vraag dan een hint, of zet hem in je verzameling.</p></div>
     <div class="acts"><button class="btn primary" type="button" data-act="camera">${I.camera}Foto maken</button><button class="btn" type="button" data-act="upload">${I.upload}Foto uploaden</button></div></section>`;
-  h=h.replace('</p></div>','</p></div>'+photoHero);
+  h=h.replace('</p></div>','</p></div>'+installCard()+photoHero);
   h+=`<section><div class="sec-title"><h3>Nieuwe puzzel</h3></div><div class="levels">${LEVELS.map(l=>`<button class="level" type="button" data-level="${l.key}">${starRow(l.stars)}<b>${l.name}</b><span class="d">${l.desc}</span></button>`).join("")}</div></section>
     <p class="notice" style="margin-top:-14px">Geen foto bij de hand? <button class="linkbtn" type="button" data-act="manual">Typ een puzzel zelf over</button></p>`;
   if(all.length){const list=filtered(all,false),shown=list.slice(0,8);
@@ -921,6 +957,8 @@ document.addEventListener("click",e=>{
     case"read-digi":readPhoto("digi");break;
     case"list":closeSheet();goList();break;
     case"home":goHome();break;
+    case"install":if(installEvt){installEvt.prompt();installEvt.userChoice.finally(()=>{installEvt=null;render()})}break;
+    case"installhide":ls.set("sudoku-install-hide",true);render();break;
     case"clearfilter":S.diff="all";S.filter="all";saveView();render();break;
     case"erase":input(0);break;
     case"undo":if(S.undo.length){S.redo.push(snapshot());restore(S.undo.pop());after(true)}break;

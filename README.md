@@ -13,6 +13,15 @@ Een web-app om sudoku's te fotograferen, te spelen en te bewaren.
 De app is een statische website en draait op GitHub Pages:
 <https://regobert.github.io/Sudoku/>
 
+## Installeren als app
+
+Sudoku Schrift is een installeerbare web-app (PWA). Na installatie staat hij als app op je beginscherm, opent hij schermvullend en werkt hij ook zonder internet. Alleen fotoherkenning heeft internet nodig.
+
+- **Android (Pixel)**: open de link in Chrome en tik op **App installeren**, op de startpagina of via **⋮ → App installeren**.
+- **iPad / iPhone**: open de link in Safari, tik op **Deel** en kies **Zet op beginscherm**.
+
+Een geïnstalleerde app op de iPad bewaart zijn verzameling apart van Safari.
+
 ## Fotoherkenning
 
 Foto's worden gelezen met Claude (model `claude-opus-5-5`) via de Anthropic API.
@@ -33,6 +42,7 @@ Een andere browser of een ander apparaat heeft een eigen verzameling.
 ## Bestanden
 
 - `index.html`: de hele app (HTML, CSS en JavaScript).
+- `manifest.webmanifest`, `sw.js`, `icons/`: maken de app installeerbaar en offline bruikbaar. Verhoog `VERSION` in `sw.js` als je bestanden wijzigt.
 - `vendor/anthropic-sdk-1.6.0.mjs`: de officiële Anthropic TypeScript SDK (`@anthropic-ai/sdk` 1.6.0), gebundeld voor de browser.
   Opnieuw maken:
 
