@@ -183,6 +183,8 @@
         const bw = k.maxx - k.minx + 1, bh = k.maxy - k.miny + 1;
         const touches = k.minx <= x0 || k.maxx >= x1 - 1 || k.miny <= y0 || k.maxy >= y1 - 1;
         if (bh < CELL * 0.28 || bw > CELL * 0.75 || k.n < 12) continue;      // te klein of een lijn
+        let gs = 0; for (const q of k.pts) gs += g[q];
+        if (gs / k.n > 150) continue;                                        // lichte vorm (thermometer), geen cijfer
         if (touches && (bw > CELL * 0.6 || bh > CELL * 0.72)) continue;      // restje rasterlijn
         const dist = Math.hypot((k.minx + k.maxx) / 2 - cx, (k.miny + k.maxy) / 2 - cy);
         if (dist > CELL * 0.3) continue;
@@ -225,8 +227,9 @@
     if (filled.length < 8) return { found: false };
     const worker = await getWorker(onProgress);
     const digits = Array(81).fill("."), kinds = Array(81).fill("."), unsure = [];
-    // ingevuld (handschrift/andere kleur) herkennen: duidelijk gekleurd of veel lichter dan gedrukt
+    // ingevuld (handschrift/andere kleur) herkennen: duidelijk anders gekleurd of veel lichter dan de meeste cijfers
     const darks = filled.map((c) => c.dark).sort((a, b) => a - b), medDark = darks[Math.floor(darks.length / 2)];
+    const sats = filled.map((c) => c.sat).sort((a, b) => a - b), medSat = sats[Math.floor(sats.length / 2)];
     let done = 0;
     for (let i = 0; i < 81; i++) {
       const c = cells[i]; if (!c) continue;
@@ -243,7 +246,7 @@
       }
       if (txt.length >= 1) {
         digits[i] = txt[0];
-        kinds[i] = c.sat > 0.28 || c.dark > medDark + 45 ? "H" : "P";
+        kinds[i] = c.sat > medSat + 0.22 || c.dark > medDark + 45 ? "H" : "P";
         if (conf < 60 || txt.length > 1) unsure.push(i);
       } else unsure.push(i);
       done++; onProgress("Cijfers lezen…", 0.3 + 0.7 * (done / filled.length));

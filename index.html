@@ -23,7 +23,7 @@
   --accent:#4a3fc4; --accent-ink:#ffffff; --accent-soft:#e7e4fb;
   --entry:#2f62d9; --sel:#ffe27a; --peer:#eef0f7; --same:#d9d4fb;
   --bad:#d23b4c; --bad-soft:#fde3e6; --good:#1f8a5b; --good-soft:#dcf3e8; --star:#f2a516;
-  --hint:#fff4c4; --hint-cell:#ffd34d;
+  --hint:#fff4c4; --hint-cell:#ffd34d; --thermo:#8fb4bd; --thermo-soft:#dcecef; --thermo-ink:#2d6672;
   --c1:#ffd0d5; --c2:#ffe2b8; --c3:#fff3a8; --c4:#cdeec9; --c5:#c9e3ff; --c6:#e3d3ff;
   --f-display:"Outfit",ui-rounded,"Segoe UI",system-ui,sans-serif;
   --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -34,7 +34,7 @@
   --accent:#8d84ff; --accent-ink:#14121f; --accent-soft:#2a2650;
   --entry:#7fb0ff; --sel:#6b5a12; --peer:#232736; --same:#3b3570;
   --bad:#ff6b7a; --bad-soft:#4a1f27; --good:#4fd39a; --good-soft:#173a2b; --star:#ffbf3c;
-  --hint:#3a3415; --hint-cell:#7a6612;
+  --hint:#3a3415; --hint-cell:#7a6612; --thermo:#6f98a3; --thermo-soft:#1e3439; --thermo-ink:#9fd0da;
   --c1:#5a2a33; --c2:#5a4123; --c3:#55501f; --c4:#24482a; --c5:#1f3c5c; --c6:#3b2d5c;
   color-scheme:dark}}
 :root[data-theme="dark"]{
@@ -42,7 +42,7 @@
   --accent:#8d84ff; --accent-ink:#14121f; --accent-soft:#2a2650;
   --entry:#7fb0ff; --sel:#6b5a12; --peer:#232736; --same:#3b3570;
   --bad:#ff6b7a; --bad-soft:#4a1f27; --good:#4fd39a; --good-soft:#173a2b; --star:#ffbf3c;
-  --hint:#3a3415; --hint-cell:#7a6612;
+  --hint:#3a3415; --hint-cell:#7a6612; --thermo:#6f98a3; --thermo-soft:#1e3439; --thermo-ink:#9fd0da;
   --c1:#5a2a33; --c2:#5a4123; --c3:#55501f; --c4:#24482a; --c5:#1f3c5c; --c6:#3b2d5c;
   color-scheme:dark}
 *{box-sizing:border-box}
@@ -182,6 +182,16 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .seg button[aria-pressed="true"]{background:var(--paper);color:var(--accent);box-shadow:0 1px 3px rgb(0 0 0 / .15)}
 
 .cell.unsure{box-shadow:inset 0 0 0 3px var(--star)}
+
+/* Thermometers */
+.board,.mini{position:relative}
+.thermo-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.thermo-svg .th{fill:var(--thermo);stroke:var(--thermo);opacity:.55}
+.thermo-svg .th circle{stroke:none}
+.thermo-svg .th.drawing{fill:var(--accent);stroke:var(--accent);opacity:.45}
+.cell{z-index:0}
+.pill.thermo{background:var(--thermo-soft);color:var(--thermo-ink)}
+.rules{margin:0;font-size:13px;color:var(--muted)}
 
 /* Speelveld */
 .play{display:grid;grid-template-columns:minmax(0,600px) minmax(260px,320px);gap:24px;align-items:start;justify-content:center}
@@ -373,15 +383,27 @@ for(let b=0;b<9;b++){const br=Math.floor(b/3)*3,bc=b%3*3,cells=[];for(let a=0;a<
 const PEERS=[...Array(81)].map((_,i)=>{const s=new Set();HOUSES.forEach(h=>{if(h.cells.includes(i))h.cells.forEach(j=>j!==i&&s.add(j))});return[...s]});
 const bits=m=>{const o=[];for(let d=1;d<=9;d++)if(m&(1<<d))o.push(d);return o};
 const pop=m=>{let c=0;while(m){m&=m-1;c++}return c};
-function cands(g){const out=new Array(81).fill(0);for(let i=0;i<81;i++){if(g[i])continue;let m=0b1111111110;for(const p of PEERS[i])if(g[p])m&=~(1<<g[p]);out[i]=m}return out}
-function conflicts(g){const bad=new Set();for(let i=0;i<81;i++)if(g[i])for(const p of PEERS[i])if(g[p]===g[i]){bad.add(i);bad.add(p)}return bad}
+/* Thermosudoku: op elke thermometer stijgen de cijfers vanaf het bolletje (eerste vakje).
+   THERMOS is de set thermometers van de puzzel waar nu mee gewerkt wordt. */
+let THERMOS=[],THPOS=new Map();
+function setThermos(t){THERMOS=Array.isArray(t)?t.filter(x=>Array.isArray(x)&&x.length>=2):[];THPOS=new Map();
+  THERMOS.forEach(th=>th.forEach((c,k)=>{if(!THPOS.has(c))THPOS.set(c,[]);THPOS.get(c).push([th,k])}))}
+function thermoMask(g,i){const es=THPOS.get(i);if(!es)return 0b1111111110;let m=0b1111111110;
+  for(const [t,k] of es){const L=t.length;let lo=k+1,hi=9-(L-1-k);
+    for(let j=0;j<L;j++){if(j===k)continue;const v=g[t[j]];if(!v)continue;if(j<k)lo=Math.max(lo,v+(k-j));else hi=Math.min(hi,v-(j-k))}
+    let mm=0;for(let d=lo;d<=hi;d++)mm|=1<<d;m&=mm}
+  return m}
+function cands(g){const out=new Array(81).fill(0);for(let i=0;i<81;i++){if(g[i])continue;let m=0b1111111110;for(const p of PEERS[i])if(g[p])m&=~(1<<g[p]);if(THERMOS.length)m&=thermoMask(g,i);out[i]=m}return out}
+function conflicts(g){const bad=new Set();for(let i=0;i<81;i++)if(g[i])for(const p of PEERS[i])if(g[p]===g[i]){bad.add(i);bad.add(p)}
+  for(const t of THERMOS)for(let a=0;a<t.length;a++)for(let b=a+1;b<t.length;b++){const x=g[t[a]],y=g[t[b]];if(x&&y&&y-x<b-a){bad.add(t[a]);bad.add(t[b])}}
+  return bad}
 function solve(g0,limit=2){
   const g=g0.slice();if(conflicts(g).size)return{count:0,solution:null};
   let count=0,solution=null,steps=0;
   (function rec(){
     if(count>=limit||steps>200000)return;steps++;
     let best=-1,bm=0,bc=10;
-    for(let i=0;i<81;i++)if(!g[i]){let m=0b1111111110;for(const p of PEERS[i])if(g[p])m&=~(1<<g[p]);const c=pop(m);if(c<bc){bc=c;best=i;bm=m;if(c<=1)break}}
+    for(let i=0;i<81;i++)if(!g[i]){let m=0b1111111110;for(const p of PEERS[i])if(g[p])m&=~(1<<g[p]);if(THERMOS.length)m&=thermoMask(g,i);const c=pop(m);if(c<bc){bc=c;best=i;bm=m;if(c<=1)break}}
     if(best<0){count++;if(!solution)solution=g.slice();return}
     if(bc===0)return;
     for(const d of bits(bm)){g[best]=d;rec();if(count>=limit)break}
@@ -393,7 +415,10 @@ const BOXNAME=["linksboven","middenboven","rechtsboven","links in het midden","i
 const houseLabel=h=>h.type==="blok"?`het blok ${BOXNAME[h.n]}`:`${h.type} ${h.n+1}`;
 const cellLabel=i=>`rij ${ROW(i)+1}, kolom ${COL(i)+1}`;
 /* Geeft een hint in 3 niveaus: waar kijken, welk vakje, welk cijfer. */
-function findHint(givens,current,solution){
+function findHint(givens,current,solution){const h=findHintCore(givens,current,solution);
+  if(h&&!h.done&&!h.error&&THERMOS.length&&h.cell!=null&&THPOS.has(h.cell))h.steps[0]+=" Let ook op de thermometer door dit gebied: vanaf het bolletje worden de cijfers steeds hoger.";
+  return h}
+function findHintCore(givens,current,solution){
   if(current.every(v=>v))return conflicts(current).size?null:{done:true};
   const cf=conflicts(current);
   if(cf.size){const i=[...cf].find(j=>!givens[j])??[...cf][0];const h=HOUSES.find(h=>h.type==="rij"&&h.cells.includes(i));
@@ -413,10 +438,13 @@ function findHint(givens,current,solution){
 }
 
 /* ---------- opslag: Claude-database (per persoon) met lokale reserve ---------- */
+const EXAMPLE_THERMO={id:"voorbeeld-thermo",title:"Thermo uit je app",stars:null,difficultyText:"",source:"Voorbeeld uit je puzzel-app",
+  givens:"..........753.124.....4...................................1.....825.397..........",
+  thermos:[[19,20,21],[30,29,28],[37,38,39],[48,47,46],[55,56,57],[23,32,41,50,59],[60,51,42,33,24],[25,34,43,52,61]]};
 const EXAMPLE={id:"voorbeeld-49",title:"Sudoku 49",stars:7,difficultyText:"7 sterren",source:"Voorbeeld uit je puzzelboek",
   givens:"392100000010080000005006000100908000000000060079340000000004702423000105000000000"};
 const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
-const S={puzzles:new Map(),view:"home",filter:"all",diff:"all",sort:"diff",cur:null,sel:-1,mode:"num",undo:[],redo:[],
+const S={puzzles:new Map(),view:"home",filter:"all",diff:"all",sort:"diff",kind:"all",newVariant:"classic",cur:null,sel:-1,mode:"num",undo:[],redo:[],
   settings:Object.assign({same:true,peers:true,live:false,autonotes:true},ls.get("sudoku-settings",{})),
   hint:null,msg:null,review:null};
 function decodeNotes(s){const a=new Array(81).fill(0);if(typeof s==="string")for(let i=0;i<81;i++)a[i]=parseInt(s.substr(i*3,3),16)||0;return a}
@@ -426,10 +454,11 @@ const toStr=a=>a.map(v=>v||".").join("");
 function normalize(p){
   let stars=p.stars??null;
   if(p.source==="Gemaakt door de app"&&!p.scale&&stars&&OLD_APP_STARS[stars])stars=OLD_APP_STARS[stars];
-  return{scale:"boek",id:p.id,title:p.title||"Sudoku",created:p.created||Date.now(),updated:p.updated||Date.now(),stars,difficultyText:p.difficultyText||"",source:p.source||"",
+  const thermos=Array.isArray(p.thermos)?p.thermos.map(t=>Array.isArray(t)?t.map(Number).filter(c=>Number.isInteger(c)&&c>=0&&c<81):[]).filter(t=>t.length>=2):[];
+  return{scale:"boek",thermos,variant:thermos.length?"thermo":"classic",id:p.id,title:p.title||"Sudoku",created:p.created||Date.now(),updated:p.updated||Date.now(),stars,difficultyText:p.difficultyText||"",source:p.source||"",
   givens:toArr(p.givens),entries:toArr(p.entries),notes:decodeNotes(p.notes),centers:decodeNotes(p.centers),colors:String(p.colors||"").padEnd(81,"0").slice(0,81).split("").map(Number),
   seconds:p.seconds||0,solvedAt:p.solvedAt||null,hints:p.hints||0,solution:null}}
-function serialize(p){return{type:"sudoku",scale:"boek",id:p.id,title:p.title,created:p.created,updated:p.updated,stars:p.stars,difficultyText:p.difficultyText,source:p.source,
+function serialize(p){return{type:"sudoku",scale:"boek",thermos:p.thermos&&p.thermos.length?p.thermos:undefined,id:p.id,title:p.title,created:p.created,updated:p.updated,stars:p.stars,difficultyText:p.difficultyText,source:p.source,
   givens:toStr(p.givens),entries:toStr(p.entries),notes:encodeNotes(p.notes),centers:encodeNotes(p.centers),colors:p.colors.join(""),seconds:Math.floor(p.seconds),solvedAt:p.solvedAt,hints:p.hints}}
 function persist(p){p.updated=Date.now();const all=ls.get("sudoku-collection",{});all[p.id]=serialize(p);
   try{localStorage.setItem("sudoku-collection",JSON.stringify(all))}catch{note("Opslaan in deze browser lukte niet. Misschien is de opslag vol of staat privé-browsen aan.",true)}}
@@ -506,7 +535,7 @@ function render(){
 function starsHTML(p){if(!p.stars&&!p.difficultyText)return"";const lbl=p.stars?`${p.stars} ${p.stars===1?"ster":"sterren"}`:p.difficultyText;
   return`<span class="stars" title="Moeilijkheid: ${esc(p.difficultyText||lbl)}">${I.star}${p.stars?p.stars:esc(p.difficultyText)}<span class="sr"> ${esc(lbl)}</span></span>`}
 function progress(p){const empty=p.givens.filter(v=>!v).length;if(!empty)return 1;let f=0;for(let i=0;i<81;i++)if(!p.givens[i]&&p.entries[i])f++;return f/empty}
-function miniHTML(p){let h="";for(let i=0;i<81;i++){const g=p.givens[i],e=p.entries[i];const cls=(COL(i)%3===2&&COL(i)<8?" bR":"")+(ROW(i)%3===2&&ROW(i)<8?" bB":"");h+=`<span class="${g?"":"e"}${cls}">${g||e||""}</span>`}return`<div class="mini" aria-hidden="true">${h}</div>`}
+function miniHTML(p){let h="";for(let i=0;i<81;i++){const g=p.givens[i],e=p.entries[i];const cls=(COL(i)%3===2&&COL(i)<8?" bR":"")+(ROW(i)%3===2&&ROW(i)<8?" bB":"");h+=`<span class="${g?"":"e"}${cls}">${g||e||""}</span>`}return`<div class="mini" aria-hidden="true">${h}${thermoSVG(p.thermos)}</div>`}
 /* ---------- installeren als app ---------- */
 let installEvt=null;
 const isStandalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
@@ -550,8 +579,25 @@ function singlesSolve(g0){const g=g0.slice();
     if(moved)continue;
     for(const h of HOUSES)for(let d=1;d<=9;d++){if(h.cells.some(i=>g[i]===d))continue;const pos=h.cells.filter(i=>!g[i]&&C[i]&(1<<d));if(pos.length===1){g[pos[0]]=d;moved=true}}
     if(!moved)return false}}
+/* Thermometers die kloppen met de oplossing: korte paden (recht, haaks) waarop de cijfers stijgen. */
+function makeThermos(sol){
+  const used=new Set(),out=[],want=5+Math.floor(Math.random()*4);
+  for(let tries=0;tries<400&&out.length<want;tries++){
+    let cur=Math.floor(Math.random()*81);if(used.has(cur))continue;
+    const path=[cur],len=3+Math.floor(Math.random()*4);
+    while(path.length<len){
+      const r=ROW(cur),c=COL(cur),nb=[];
+      for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(nr<0||nc<0||nr>8||nc>8)continue;const n=nr*9+nc;if(!used.has(n)&&!path.includes(n)&&sol[n]>sol[cur])nb.push(n)}
+      if(!nb.length)break;
+      nb.sort((a,b)=>sol[a]-sol[b]);cur=nb[Math.random()<.6?0:Math.floor(Math.random()*nb.length)];path.push(cur);
+    }
+    if(path.length>=3){path.forEach(x=>used.add(x));out.push(path)}
+  }
+  return out;
+}
 function carve(level){
   const sol=fullGrid(),g=sol.slice();
+  if(level.thermo)setThermos(makeThermos(sol));else setThermos([]);
   for(const i of shuffle([...Array(81).keys()])){
     if(level.givens&&g.filter(Boolean).length<=level.givens)break;
     const keep=g[i];g[i]=0;
@@ -563,24 +609,29 @@ function carve(level){
    Vanaf 7 sterren: daar niet mee op te lossen, en zwaarder naarmate de zoekmachine
    meer stappen nodig heeft (van meerdere pogingen houden we de best passende). */
 function makePuzzle(level){
-  if(level.singles){for(let t=0;t<12;t++){const g=carve(level);if(singlesSolve(g)||t===11)return g}}
-  const t0=Date.now();let best=null,bestDist=Infinity;
+  if(level.singles){for(let t=0;t<12;t++){const g=carve(level);if(singlesSolve(g)||t===11)return {g,thermos:THERMOS}}}
+  const t0=Date.now();let best=null,bestDist=Infinity,bestTh=[];
   for(let t=0;t<level.tries&&Date.now()-t0<6000;t++){
     const g=carve(level);if(singlesSolve(g))continue;
     const st=solve(g,2).steps;
     const dist=st<level.minSteps?level.minSteps-st:(level.maxSteps&&st>level.maxSteps?st-level.maxSteps:0);
-    if(dist<bestDist){best=g;bestDist=dist}
+    if(dist<bestDist){best=g;bestDist=dist;bestTh=THERMOS}
     if(dist===0)break;
   }
-  return best||carve(level);
+  if(best)return {g:best,thermos:bestTh};
+  const g=carve(level);return {g,thermos:THERMOS};
 }
 function newPuzzle(key,btn){
-  const level=LEVELS.find(l=>l.key===key);if(!level)return;
+  const base=LEVELS.find(l=>l.key===key);if(!base)return;
+  const thermo=S.newVariant==="thermo";
+  /* Thermometers geven extra informatie, dus bij thermo minder gegeven cijfers. */
+  const level=thermo?{...base,thermo:true,givens:base.givens?base.givens-8:0}:base;
   if(btn){btn.setAttribute("aria-busy","true");btn.querySelector(".d").textContent=level.stars>=9?"Puzzel maken… dit kan een paar seconden duren.":"Puzzel maken…"}
   setTimeout(()=>{
-    const g=makePuzzle(level);
-    const n=[...S.puzzles.values()].filter(p=>p.source==="Gemaakt door de app"&&p.difficultyText===level.name).length+1;
-    const p=normalize({scale:"boek",id:uid(),title:`${level.name} ${n}`,stars:level.stars,difficultyText:level.name,source:"Gemaakt door de app",givens:toStr(g)});
+    const {g,thermos}=makePuzzle(level);
+    const name=(thermo?"Thermo ":"")+level.name;
+    const n=[...S.puzzles.values()].filter(p=>p.source==="Gemaakt door de app"&&p.title.startsWith(name+" ")).length+1;
+    const p=normalize({scale:"boek",id:uid(),title:`${name} ${n}`,stars:level.stars,difficultyText:level.name,source:"Gemaakt door de app",givens:toStr(g),thermos});
     S.puzzles.set(p.id,p);persist(p,true);openPuzzle(p);window.scrollTo(0,0);
   },30);
 }
@@ -604,7 +655,9 @@ function renderHome(){
     <div class="acts"><button class="btn primary" type="button" data-act="quickhint">${I.camera}Hint met foto</button><button class="btn" type="button" data-act="quickhint-up" title="Kies een bestaande foto of schermafbeelding">${I.upload}Uit fotorol</button></div>
     <p class="notice" style="grid-column:1 / -1;margin:0">Wil je de puzzel bewaren of hier verder spelen? <button class="linkbtn" type="button" data-act="camera">Foto maken</button> of <button class="linkbtn" type="button" data-act="upload">foto uploaden</button> en kies Digitaliseren.</p></section>`;
   h=h.replace('</p></div>','</p></div>'+installCard()+photoHero);
-  h+=`<section><div class="sec-title"><h3>Nieuwe puzzel</h3></div><div class="levels">${LEVELS.map(l=>`<button class="level" type="button" data-level="${l.key}"><span class="lvstars">${I.star}${l.stars}<span class="sr"> sterren</span></span><b>${l.name}</b><span class="d">${l.desc}</span></button>`).join("")}</div></section>
+  const nv=S.newVariant||"classic";
+  h+=`<section><div class="sec-title"><h3>Nieuwe puzzel</h3><div class="tabs" role="group" aria-label="Soort puzzel"><button class="chip" type="button" data-newvar="classic" aria-pressed="${nv==="classic"}">Klassiek</button><button class="chip" type="button" data-newvar="thermo" aria-pressed="${nv==="thermo"}">Thermo</button></div></div>
+    ${nv==="thermo"?`<p class="rules" style="margin:-4px 0 10px">Thermosudoku: op elke thermometer worden de cijfers vanaf het bolletje steeds hoger. <button class="linkbtn" type="button" data-open="voorbeeld-thermo" data-example="thermo">Probeer het voorbeeld uit je app</button></p>`:""}<div class="levels">${LEVELS.map(l=>`<button class="level" type="button" data-level="${l.key}"><span class="lvstars">${I.star}${l.stars}<span class="sr"> sterren</span></span><b>${l.name}</b><span class="d">${l.desc}</span></button>`).join("")}</div></section>
     <p class="notice" style="margin-top:-14px">Geen foto bij de hand? <button class="linkbtn" type="button" data-act="manual">Typ een puzzel zelf over</button></p>`;
   if(all.length){const list=filtered(all,false),shown=list.slice(0,8);
     h+=`<section><div class="sec-title"><h3>Mijn puzzels</h3><span><button class="linkbtn" type="button" data-act="backup">Back-up</button> · <button class="linkbtn" type="button" data-act="list">Alles bekijken (${all.length})</button></span></div>
@@ -623,21 +676,26 @@ const rangeStars=r=>r.hi>=99?`${r.lo}+`:`${r.lo}–${r.hi}`;
 const diffLabel=k=>{const r=RANGES.find(r=>r.k===k);return r?`${rangeStars(r)} sterren`:"Zonder niveau"};
 const diffChipLabel=k=>{const r=RANGES.find(r=>r.k===k);return r?`<span class="stars">${I.star}${rangeStars(r)}</span>`:"Zonder niveau"};
 function sortByDiff(a,b){const x=a.stars||99,y=b.stars||99;return x-y||b.updated-a.updated}
-function saveView(){ls.set("sudoku-view",{diff:S.diff,filter:S.filter,sort:S.sort})}
+function saveView(){ls.set("sudoku-view",{diff:S.diff,filter:S.filter,sort:S.sort,kind:S.kind,newVariant:S.newVariant})}
+const KIND_LABEL={classic:"Klassiek",thermo:"Thermo"};
 function filterBar(all,{status=true,sort=true}={}){
+  const kinds=[...new Set(all.map(p=>p.variant||"classic"))];
+  if(S.kind!=="all"&&!kinds.includes(S.kind))S.kind="all";
+  const kchip=k=>`<button class="chip" type="button" data-kind="${k}" aria-pressed="${S.kind===k}">${k==="all"?"Alle":KIND_LABEL[k]}<span class="cnt">${all.filter(p=>k==="all"||(p.variant||"classic")===k).length}</span></button>`;
+  const kindRow=kinds.includes("thermo")?`<div class="tabs" role="group" aria-label="Soort"><span class="lbl">Soort</span>${["all","classic","thermo"].filter(k=>k==="all"||kinds.includes(k)).map(kchip).join("")}</div>`:"";
   const keys=[...new Set(all.map(diffKey))].sort((a,b)=>RANGE_ORDER.indexOf(a)-RANGE_ORDER.indexOf(b));
   if(S.diff!=="all"&&!keys.includes(S.diff))S.diff="all";
   const cnt=k=>all.filter(p=>k==="all"||diffKey(p)===k).length;
   const dchip=k=>`<button class="chip" type="button" data-diff="${k}" aria-pressed="${S.diff===k}" aria-label="${k==="all"?"Alle niveaus":diffLabel(k)}" title="${k==="all"?"Alle niveaus":diffLabel(k)}">${k==="all"?"Alle":diffChipLabel(k)}<span class="cnt">${cnt(k)}</span></button>`;
   const f=(k,l)=>`<button class="chip" type="button" data-filter="${k}" aria-pressed="${S.filter===k}">${l}</button>`;
-  return`<div class="filters">
+  return`<div class="filters">${kindRow}
     <div class="tabs" role="group" aria-label="Moeilijkheid"><span class="lbl">Moeilijkheid</span>${["all",...keys].map(dchip).join("")}</div>
     ${status?`<div class="tabs" role="group" aria-label="Status"><span class="lbl">Status</span>${f("all","Alle")}${f("busy","Nog niet af")}${f("solved","Opgelost")}</div>`:""}
     ${sort?`<div class="tabs"><span class="lbl">Sorteren</span><select class="sortsel" id="sortSel" aria-label="Sorteren"><option value="diff" ${S.sort==="diff"?"selected":""}>Op moeilijkheid, makkelijk eerst</option><option value="diffdesc" ${S.sort==="diffdesc"?"selected":""}>Op moeilijkheid, moeilijk eerst</option><option value="recent" ${S.sort==="recent"?"selected":""}>Laatst gespeeld</option></select></div>`:""}
   </div>`;
 }
 function filtered(all,useStatus=true){
-  let list=all.filter(p=>S.diff==="all"||diffKey(p)===S.diff);
+  let list=all.filter(p=>(S.kind==="all"||(p.variant||"classic")===S.kind)&&(S.diff==="all"||diffKey(p)===S.diff));
   if(useStatus)list=list.filter(p=>S.filter==="all"||(S.filter==="solved"?p.solvedAt:!p.solvedAt));
   if(S.sort==="recent")list.sort((a,b)=>b.updated-a.updated);
   else{list.sort(sortByDiff);if(S.sort==="diffdesc")list.sort((a,b)=>(b.stars||0)-(a.stars||0)||b.updated-a.updated)}
@@ -671,7 +729,7 @@ function cardHTML(p,example){
   return`<button class="card" type="button" data-open="${esc(p.id)}" ${example?'data-example="1"':""}>
     ${example?'<span class="example-tag">Voorbeeld</span>':""}
     ${miniHTML(p)}
-    <div class="meta"><h3>${esc(p.title)}</h3>${starsHTML(p)}</div>
+    <div class="meta"><h3>${esc(p.title)}</h3>${starsHTML(p)}${p.thermos&&p.thermos.length?'<span class="pill thermo">Thermo</span>':""}</div>
     ${p.solvedAt?"":`<div class="bar" aria-hidden="true"><i style="width:${pr*100}%"></i></div>`}
     <div class="row">${st}<span>${p.solvedAt?fmtTime(p.seconds):example?esc(p.source):date}</span></div></button>`;
 }
@@ -679,7 +737,7 @@ function cardHTML(p,example){
 /* ---------- spel ---------- */
 function current(p){return p.givens.map((g,i)=>g||p.entries[i])}
 function openPuzzle(p){
-  S.cur=p;S.sel=p.givens.findIndex(v=>!v);S.undo=[];S.redo=[];S.hint=null;S.msg=null;S.mode="num";
+  S.cur=p;S.sel=p.givens.findIndex(v=>!v);S.undo=[];S.redo=[];S.hint=null;S.msg=null;S.mode="num";setThermos(p.thermos);
   if(!p.solution){const r=solve(p.givens,2);p.solution=r.count===1?r.solution:null;p.unique=r.count}
   S.view="play";render();startTimer();
 }
@@ -700,6 +758,13 @@ function cellClasses(p,i,cur,C){
   if(S.settings.live&&C.has(i))cls.push("conflict");
   return cls.join(" ");
 }
+function thermoSVG(thermos,drawing){
+  if(!(thermos&&thermos.length)&&!(drawing&&drawing.length))return"";
+  const cxy=i=>[COL(i)+.5,ROW(i)+.5];
+  const one=(t,cls)=>{const pts=t.map(cxy);const [bx,by]=pts[0];
+    return`<g class="th ${cls||""}"><circle cx="${bx}" cy="${by}" r=".34"/>${pts.length>1?`<polyline points="${pts.map(q=>q.join(",")).join(" ")}" fill="none" stroke-width=".24" stroke-linecap="round" stroke-linejoin="round"/>`:""}</g>`};
+  return`<svg class="thermo-svg" viewBox="0 0 9 9" aria-hidden="true">${(thermos||[]).map(t=>one(t)).join("")}${drawing&&drawing.length?one(drawing,"drawing"):""}</svg>`;
+}
 function boardHTML(p,cur,editable=true){
   const C=conflicts(cur);let h="";
   for(let i=0;i<81;i++){
@@ -713,7 +778,7 @@ function boardHTML(p,cur,editable=true){
     const lbl=`${cellLabel(i)}${cur[i]?": "+cur[i]:": leeg"}${p.givens[i]?" (gegeven)":""}${!cur[i]&&p.notes?.[i]?", hoekcijfers "+bits(p.notes[i]).join(" "):""}${!cur[i]&&p.centers?.[i]?", middencijfers "+bits(p.centers[i]).join(" "):""}`;
     h+=`<button type="button" class="${cellClasses(p,i,cur,C)}" data-cell="${i}" aria-label="${lbl}" tabindex="${i===Math.max(0,S.sel)?0:-1}">${inner}</button>`;
   }
-  return`<div class="boardbox"><div class="board" role="grid" aria-label="Sudoku-raster" id="board">${h}</div></div>`;
+  return`<div class="boardbox"><div class="board" role="grid" aria-label="${p.thermos&&p.thermos.length?"Thermosudoku-raster":"Sudoku-raster"}" id="board">${h}${thermoSVG(p.thermos,p.drawing)}</div></div>`;
 }
 function renderPlay(){
   const p=S.cur,cur=current(p);
@@ -748,6 +813,7 @@ function renderPlay(){
       <div class="board-head"><h2>${esc(p.title)}</h2>${starsHTML(p)}<span class="timer" id="timer" aria-label="Speeltijd">${fmtTime(p.seconds)}</span></div>
       ${boardHTML(p,cur)}
       ${uniq}
+      ${p.thermos&&p.thermos.length?`<p class="rules">Thermosudoku: op elke thermometer worden de cijfers vanaf het bolletje steeds hoger.</p>`:""}
       ${p.source?`<p class="notice">${esc(p.source)}${p.hints?` · ${p.hints} hint${p.hints>1?"s":""} gebruikt`:""}</p>`:""}
     </section>
     <aside class="panel" aria-label="Bediening">
@@ -853,8 +919,10 @@ For each cell output a digit 1-9, or "." if the cell is empty.
 Also say for each filled cell whether it is a printed/original clue ("P") or a digit added later by the solver ("H": handwriting, pencil, or on screens a different colour/weight than the clues).
 Ignore faint digits that show through from the other side of the paper, and ignore tiny pencil-mark candidates in corners.
 Look for a difficulty indication anywhere on the page or screen: a number of stars (a star badge containing the number 7 means 7 stars; a row of 4 filled stars means 4), words like "makkelijk", "gemiddeld", "moeilijk", "expert", "level 3", "niveau 5". Look also for a puzzle number or name (e.g. a number printed under the grid, "Puzzle 2").
+This may be a thermo sudoku: grey or coloured thermometer shapes drawn over the grid, each a round bulb with a line through neighbouring cells. If so, list every thermometer as the cells it covers in order, starting at the bulb, using 1-based [row, column]. Do not read a bulb or a thermometer line as a digit.
 Answer with only JSON in exactly this shape:
-{"found":true,"rows":["392......", ... 9 strings of 9 characters],"kinds":["PPP......", ... 9 strings, P/H/. matching rows],"stars":7,"difficultyText":"7 sterren","title":"49"}
+{"found":true,"rows":["392......", ... 9 strings of 9 characters],"kinds":["PPP......", ... 9 strings, P/H/. matching rows],"stars":7,"difficultyText":"7 sterren","title":"49","thermos":[[[3,2],[3,3],[3,4]], ...]}
+Use "thermos":[] for an ordinary sudoku.
 Use null for stars, difficultyText or title when there is none. difficultyText is a short Dutch phrase as the user would say it (e.g. "7 sterren", "Moeilijk", "Niveau 3"). If there is no sudoku in the photo, answer {"found":false}. Output only the JSON object, with no other text.`;
 /* Welke herkenning? Claude met sleutel, anders (of op verzoek) gratis op het apparaat. */
 const useFreeOCR=()=>!getKey()||!!S.settings.freeOcr||S.freeOnce;
@@ -874,7 +942,8 @@ async function readPhoto(mode){
     const kinds=(Array.isArray(r.kinds)?r.kinds:[]).map(s=>String(s).padEnd(9,".").slice(0,9)).concat(Array(9).fill(".........")).slice(0,9).join("");
     const digits=toArr(rows);const kind=digits.map((v,i)=>v?(kinds[i]==="H"?"H":"P"):"");
     const stars=Number.isFinite(+r.stars)&&+r.stars>0&&+r.stars<=20?Math.round(+r.stars):null;
-    S.review={mode,engine:"claude",unsure:new Set(),digits,kind,stars,difficultyText:r.difficultyText?String(r.difficultyText).slice(0,40):(stars?`${stars} sterren`:""),
+    const thermos=(Array.isArray(r.thermos)?r.thermos:[]).map(t=>Array.isArray(t)?t.map(c=>Array.isArray(c)?(+c[0]-1)*9+(+c[1]-1):-1).filter(i=>Number.isInteger(i)&&i>=0&&i<81):[]).filter(t=>t.length>=2);
+    S.review={mode,engine:"claude",unsure:new Set(),thermos,digits,kind,stars,difficultyText:r.difficultyText?String(r.difficultyText).slice(0,40):(stars?`${stars} sterren`:""),
       title:r.title?(/^\d+$/.test(String(r.title))?"Sudoku "+r.title:String(r.title).slice(0,40)):"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),
       photo:photo.url,hintState:null,sel:-1};
     closeSheet();S.view="review";S.sel=-1;render();window.scrollTo(0,0);
@@ -899,7 +968,7 @@ async function readPhotoFree(mode){
     if(stop)return;
     if(!r.found){sheet(`<h2>Geen raster gevonden</h2><p>De gratis herkenning vindt geen sudoku-raster op deze foto. Maak de foto recht van boven, met het hele raster goed in beeld en zonder schaduw.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${mode==="hint"?"quickhint":"camera"}">Nieuwe foto</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Sluiten</button></div>`);return}
     const digits=toArr(r.rows.join("")),kinds=r.kinds.join(""),kind=digits.map((v,i)=>v?(kinds[i]==="H"?"H":"P"):"");
-    S.review={mode,engine:"free",unsure:new Set(r.unsure),digits,kind,stars:null,difficultyText:"",
+    S.review={mode,engine:"free",unsure:new Set(r.unsure),thermos:[],digits,kind,stars:null,difficultyText:"",
       title:"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),photo:photo.url,hintState:null,sel:-1};
     closeSheet();S.view="review";S.sel=-1;render();if(mode==="hint"){reviewHint();renderReview()}window.scrollTo(0,0);
   }catch(e){
@@ -907,23 +976,28 @@ async function readPhotoFree(mode){
     sheet(`<h2>Dat lukte niet</h2><p>${esc(e?.message||"De gratis herkenning is niet gelukt.")}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${mode==="hint"?"read-hint":"read-digi"}">Opnieuw proberen</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Sluiten</button></div>`);
   }
 }
-function startManual(){closeSheet();S.review={mode:"digi",digits:Array(81).fill(0),kind:Array(81).fill(""),stars:null,difficultyText:"",title:"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),photo:photo?.url||null,sel:0};S.view="review";render()}
+function startManual(){closeSheet();S.review={mode:"digi",thermos:[],digits:Array(81).fill(0),kind:Array(81).fill(""),stars:null,difficultyText:"",title:"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),photo:photo?.url||null,sel:0};S.view="review";render()}
 function reviewStatus(R){
+  setThermos(R.thermos);
   const givens=R.digits.map((v,i)=>R.kind[i]==="P"?v:0);const all=R.digits;
   const cf=conflicts(all);
   const nGiven=givens.filter(Boolean).length;
   if(cf.size)return{kind:"bad",text:"Er staan dubbele cijfers in een rij, kolom of blok (rood omrand). Vergelijk met je foto en verbeter ze.",solution:null,cf};
-  if(nGiven<17)return{kind:"info",text:`${nGiven} cijfers ingevuld. Een sudoku heeft er minstens 17 nodig.`,solution:null,cf};
+  if(nGiven<17&&!THERMOS.length)return{kind:"info",text:`${nGiven} cijfers ingevuld. Een sudoku heeft er minstens 17 nodig. Is het een thermosudoku? Teken dan de thermometers.`,solution:null,cf};
   const r=solve(givens,2);
   if(r.count===0)return{kind:"bad",text:"Met deze cijfers is de puzzel niet op te lossen. Waarschijnlijk is een cijfer verkeerd gelezen.",solution:null,cf};
   const r2=solve(all,1);
   if(r.count>1)return{kind:"info",text:"Let op: met deze cijfers heeft de puzzel meer dan één oplossing. Controleer of alle cijfers kloppen.",solution:null,cf,givens};
   if(r2.count===0)return{kind:"bad",text:"De gedrukte cijfers kloppen, maar een van de zelf ingevulde cijfers is fout.",solution:r.solution,cf,givens};
-  return{kind:"good",text:"Alle cijfers gelezen. De puzzel heeft precies één oplossing.",solution:r.solution,cf,givens};
+  return{kind:"good",text:THERMOS.length?`Alle cijfers en ${THERMOS.length} thermometers gelezen. De puzzel heeft precies één oplossing.`:"Alle cijfers gelezen. De puzzel heeft precies één oplossing.",solution:r.solution,cf,givens};
 }
 function renderReview(){
   const R=S.review,st=reviewStatus(R);
-  const fake={givens:R.digits.map((v,i)=>R.kind[i]==="P"?v:0),entries:R.digits.map((v,i)=>R.kind[i]==="H"?v:0),notes:Array(81).fill(0),centers:Array(81).fill(0),colors:Array(81).fill(0),solution:null};
+  const fake={givens:R.digits.map((v,i)=>R.kind[i]==="P"?v:0),entries:R.digits.map((v,i)=>R.kind[i]==="H"?v:0),notes:Array(81).fill(0),centers:Array(81).fill(0),colors:Array(81).fill(0),solution:null,thermos:R.thermos||[],drawing:R.drawing||null};
+  const thEditor=`<div class="thermo-edit">
+    ${R.drawing?`<div class="msg info">Tik de vakjes van de thermometer aan, te beginnen bij het bolletje. ${R.drawing.length?`${R.drawing.length} vakje${R.drawing.length>1?"s":""} gekozen.`:""}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="th-done" ${R.drawing.length<2?"disabled":""}>Thermometer klaar</button><button class="btn" type="button" data-act="th-back" ${R.drawing.length?"":"disabled"}>Vakje terug</button><button class="btn ghost" type="button" data-act="th-cancel">Stoppen</button></div>`
+    :`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="notice">${(R.thermos||[]).length?`${R.thermos.length} thermometer${R.thermos.length>1?"s":""}`:"Thermosudoku?"}</span><button class="btn" type="button" data-act="th-start">Thermometer tekenen</button>${(R.thermos||[]).length?`<button class="btn ghost" type="button" data-act="th-undo">Laatste wissen</button>`:""}</div>`}</div>`;
   const savedSel=S.sel;S.sel=R.sel;const savedHint=S.hint;
   if(R.mode==="hint"&&R.hintState)S.hint=R.hintState;else S.hint=null;
   const prevLive=S.settings.live;S.settings.live=true;
@@ -947,10 +1021,11 @@ function renderReview(){
       <div class="board-head"><h2>${R.mode==="hint"?"Hint voor je puzzel":"Controleer de cijfers"}</h2>${R.stars||R.difficultyText?starsHTML(R):""}</div>
       ${R.mode==="hint"?side:""}
       ${board}
-      <div class="legend"><span><b>5</b> gedrukt cijfer</span><span><b style="color:var(--entry)">5</b> zelf ingevuld</span></div>
+      <div class="legend"><span><b>5</b> gedrukt cijfer</span><span><b style="color:var(--entry)">5</b> zelf ingevuld</span>${(R.thermos||[]).length?`<span>Thermometers: cijfers stijgen vanaf het bolletje</span>`:""}</div>
     </section>
     <aside class="panel">
       ${R.mode==="hint"?"":side}
+      ${thEditor}
       ${R.photo?`<img class="photo-ref" src="${R.photo}" alt="Je foto ter vergelijking">`:""}
       <div class="msg ${st.kind}">${esc(st.text)}</div>
       ${R.engine==="free"?`<p class="notice" style="margin:0">Gelezen met de gratis herkenning. Vergelijk de cijfers met je foto${R.unsure&&R.unsure.size?`; ${R.unsure.size} ${R.unsure.size===1?"twijfelgeval is":"twijfelgevallen zijn"} oranje omrand`:""}.${R.mode!=="hint"?" Sterren vul je zelf in.":""}</p>`:""}
@@ -963,7 +1038,7 @@ function renderReview(){
   R.status=st;
   if(R.unsure&&R.unsure.size)R.unsure.forEach(i=>main.querySelector(`[data-cell="${i}"]`)?.classList.add("unsure"));
 }
-function reviewHint(){const R=S.review,st=reviewStatus(R);
+function reviewHint(){const R=S.review,st=reviewStatus(R);setThermos(R.thermos);
   const givens=st.givens||R.digits.map((v,i)=>R.kind[i]==="P"?v:0);
   const h=findHint(givens,R.digits,st.solution);R.hintState=h?Object.assign(h,{level:0}):null}
 function reviewInput(d){const R=S.review;if(R.sel<0)return;R.unsure?.delete(R.sel);R.digits[R.sel]=d;R.kind[R.sel]=d?(R.kind[R.sel]||(R.mode==="hint"?"H":"P")):"";if(R.mode==="hint")reviewHint();renderReview();main.querySelector(`[data-cell="${R.sel}"]`)?.focus({preventScroll:true})}
@@ -972,8 +1047,8 @@ function saveDigitized(){
   const stars=s&&s.value!==""?Math.max(0,Math.min(20,parseInt(s.value)||0))||null:null;
   const p=normalize({id:uid(),title:(t?.value||R.title).trim()||"Sudoku",stars,difficultyText:(d?.value||"").trim()||(stars?`${stars} sterren`:""),
     source:R.photo?"Gedigitaliseerd van foto op "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long",year:"numeric"}):"Zelf ingevoerd",
-    givens:toStr(R.digits.map((v,i)=>R.kind[i]==="P"?v:0)),entries:toStr(R.digits.map((v,i)=>R.kind[i]==="H"?v:0))});
-  if(p.givens.filter(Boolean).length<17){R.status={};const m=main.querySelector(".msg");if(m){m.className="msg bad";m.textContent="Vul eerst minstens 17 gedrukte cijfers in."}return}
+    givens:toStr(R.digits.map((v,i)=>R.kind[i]==="P"?v:0)),entries:toStr(R.digits.map((v,i)=>R.kind[i]==="H"?v:0)),thermos:R.thermos||[]});
+  if(p.givens.filter(Boolean).length<17&&!p.thermos.length){R.status={};const m=main.querySelector(".msg");if(m){m.className="msg bad";m.textContent="Vul eerst minstens 17 gedrukte cijfers in, of teken de thermometers als het een thermosudoku is."}return}
   S.puzzles.set(p.id,p);persist(p,true);S.review=null;photo=null;openPuzzle(p);
 }
 
@@ -1067,6 +1142,7 @@ function openHelp(){
     ${r(I.palette,"Kleuren: geef vakjes een kleur om iets te onthouden.")}
     ${r(I.undo,"Terug en Vooruit: zet je laatste stappen terug of opnieuw.")}
     ${r(I.check,"Controleer: kijk of je cijfers kloppen. Is alles goed, dan volgt een feestje.")}
+    ${r('<svg viewBox="0 0 24 24" width="24" height="24"><circle cx="6" cy="12" r="4" fill="var(--thermo)"/><path d="M6 12h14" stroke="var(--thermo)" stroke-width="3" stroke-linecap="round"/></svg>',"Thermosudoku: op elke thermometer worden de cijfers vanaf het bolletje steeds hoger. Kies Thermo bij Nieuwe puzzel.")}
     </dl><p class="notice">Met een toetsenbord: pijltjes om te bewegen, 1-9 om in te vullen, N om te wisselen tussen groot, hoek en midden.</p>
     <div><button class="btn primary" type="button" data-act="close">Begrepen</button></div>`)}
 
@@ -1104,9 +1180,14 @@ document.addEventListener("click",e=>{
   if(t.id==="btnKey"){openSettings();return}
   if(t.dataset.filter){S.filter=t.dataset.filter;saveView();render();return}
   if(t.dataset.diff){S.diff=t.dataset.diff;saveView();render();return}
+  if(t.dataset.kind){S.kind=t.dataset.kind;saveView();render();return}
+  if(t.dataset.newvar){S.newVariant=t.dataset.newvar;saveView();render();return}
   if(t.dataset.open){let p=S.puzzles.get(t.dataset.open);
-    if(!p&&t.dataset.example){p=normalize(Object.assign({},EXAMPLE,{id:uid()}));S.puzzles.set(p.id,p);persist(p,true)}
+    if(!p&&t.dataset.example){p=normalize(Object.assign({},t.dataset.example==="thermo"?EXAMPLE_THERMO:EXAMPLE,{id:uid()}));S.puzzles.set(p.id,p);persist(p,true)}
     if(p)openPuzzle(p);return}
+  if(t.dataset.cell!==undefined&&S.view==="review"&&S.review?.drawing){const i=+t.dataset.cell,d=S.review.drawing,last=d[d.length-1];
+    if(d.includes(i)){if(i===last)d.pop()}else if(!d.length||Math.max(Math.abs(ROW(i)-ROW(last)),Math.abs(COL(i)-COL(last)))===1)d.push(i);
+    renderReview();return}
   if(t.dataset.cell!==undefined){const i=+t.dataset.cell;if(S.view==="review"){S.review.sel=i;renderReview()}else{S.sel=i;render()}main.querySelector(`[data-cell="${i}"]`)?.focus({preventScroll:true});return}
   if(t.dataset.digit){input(+t.dataset.digit);return}
   if(t.dataset.color!==undefined){input(+t.dataset.color);return}
@@ -1147,6 +1228,11 @@ document.addEventListener("click",e=>{
     case"todigi":S.review.mode="digi";S.review.digits.forEach((v,i)=>{if(v&&!S.review.kind[i])S.review.kind[i]="P"});renderReview();break;
     case"rkind":{const R=S.review;if(R.sel>=0&&R.digits[R.sel]){R.kind[R.sel]=R.kind[R.sel]==="P"?"H":"P";if(R.mode==="hint")reviewHint();renderReview()}break}
     case"rerase":reviewInput(0);break;
+    case"th-start":S.review.drawing=[];renderReview();break;
+    case"th-back":S.review.drawing?.pop();renderReview();break;
+    case"th-cancel":S.review.drawing=null;renderReview();break;
+    case"th-done":{const R=S.review;if(R.drawing&&R.drawing.length>=2){R.thermos=[...(R.thermos||[]),R.drawing]}R.drawing=null;if(R.mode==="hint")reviewHint();renderReview();break}
+    case"th-undo":{const R=S.review;R.thermos=(R.thermos||[]).slice(0,-1);if(R.mode==="hint")reviewHint();renderReview();break}
     case"savedigi":saveDigitized();break;
     case"key":openKeySheet();break;
     case"backup":openBackup();break;
@@ -1190,7 +1276,7 @@ function goList(){if(S.cur)persist(S.cur,true);S.view="list";S.cur=null;S.review
 
 function readHint(){readPhoto("hint").then(()=>{if(S.view==="review"&&S.review&&S.review.mode==="hint"){reviewHint();renderReview()}})}
 document.addEventListener("readphoto",e=>e.detail==="hint"?readHint():readPhoto("digi"));
-Object.assign(S,(({diff,filter,sort})=>({...(diff&&{diff}),...(filter&&{filter}),...(sort&&{sort})}))(ls.get("sudoku-view",{})));
+Object.assign(S,(({diff,filter,sort,kind,newVariant})=>({...(diff&&{diff}),...(filter&&{filter}),...(sort&&{sort}),...(kind&&{kind}),...(newVariant&&{newVariant})}))(ls.get("sudoku-view",{})));
 applyTheme();
 loadLocal();render();initRuntime();
 })();

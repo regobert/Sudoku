@@ -1,6 +1,6 @@
 /* Sudoku Schrift service worker: de app werkt ook zonder internet.
    Verhoog VERSION bij elke wijziging aan de bestanden hieronder. */
-const VERSION = "v8";
+const VERSION = "v9";
 const CACHE = "sudoku-" + VERSION;
 const SHELL = [
   "./",

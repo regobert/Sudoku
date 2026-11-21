@@ -8,6 +8,15 @@ Een web-app om sudoku's te fotograferen, te spelen en te bewaren.
 - **Controleren**: de app controleert je oplossing en viert het met confetti als alles klopt.
 - **Bediening**: cijfers, notities, kleuren, terug/vooruit, wissen, hint, opnieuw beginnen.
 
+## Thermosudoku
+
+Een aparte soort puzzel: op elke thermometer worden de cijfers vanaf het bolletje steeds hoger.
+
+- **Nieuwe puzzel → Thermo**: de app maakt thermosudoku's op dezelfde sterrenschaal (3 t/m 13).
+- **Van een foto**: Claude leest ook de thermometers. Met de gratis herkenning teken je ze zelf in het controlescherm (**Thermometer tekenen**, begin bij het bolletje).
+- **Filter**: bij Mijn puzzels en in de verzameling kies je bij **Soort** voor Klassiek of Thermo.
+- Hints, Controleer en de foutmelding houden rekening met de thermometers.
+
 ## Openen
 
 De app is een statische website en draait op GitHub Pages:
