@@ -280,7 +280,7 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
   <header class="top">
     <button class="brand" type="button" id="btnHome" aria-label="Naar de openingspagina"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><h1>Sudoku Schrift</h1></button>
     <button class="btn" id="btnList" type="button"></button>
-    <button class="btn ghost" id="btnKey" type="button" aria-label="Instellingen voor fotoherkenning"></button>
+    <button class="btn ghost" id="btnKey" type="button" aria-label="Instellingen en back-up"></button>
     <button class="btn primary" id="btnPhoto" type="button"></button>
   </header>
   <main id="main"></main>
@@ -288,6 +288,7 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 </div>
 <input type="file" id="fileIn" accept="image/*" capture="environment" class="sr" tabindex="-1" aria-hidden="true">
 <input type="file" id="fileUp" accept="image/*" class="sr" tabindex="-1" aria-hidden="true">
+<input type="file" id="fileBackup" accept=".json,application/json" class="sr" tabindex="-1" aria-hidden="true">
 <canvas id="confetti" hidden></canvas>
 <div id="overlay"></div>
 
@@ -546,11 +547,11 @@ function renderHome(){
   h+=`<section><div class="sec-title"><h3>Nieuwe puzzel</h3></div><div class="levels">${LEVELS.map(l=>`<button class="level" type="button" data-level="${l.key}">${starRow(l.stars)}<b>${l.name}</b><span class="d">${l.desc}</span></button>`).join("")}</div></section>
     <p class="notice" style="margin-top:-14px">Geen foto bij de hand? <button class="linkbtn" type="button" data-act="manual">Typ een puzzel zelf over</button></p>`;
   if(all.length){const list=filtered(all,false),shown=list.slice(0,8);
-    h+=`<section><div class="sec-title"><h3>Mijn puzzels</h3><button class="linkbtn" type="button" data-act="list">Alles bekijken (${all.length})</button></div>
+    h+=`<section><div class="sec-title"><h3>Mijn puzzels</h3><span><button class="linkbtn" type="button" data-act="backup">Back-up</button> · <button class="linkbtn" type="button" data-act="list">Alles bekijken (${all.length})</button></span></div>
       ${filterBar(all,{status:false,sort:false})}
       <div class="cards">${shown.map(p=>cardHTML(p)).join("")}</div>
       ${list.length>shown.length?`<p class="notice">En nog ${list.length-shown.length}. <button class="linkbtn" type="button" data-act="list">Bekijk ze allemaal</button></p>`:""}</section>`}
-  else if(!all.length)h+=`<section><div class="sec-title"><h3>Probeer alvast</h3></div><div class="cards">${cardHTML(normalize(EXAMPLE),true)}</div></section>`;
+  else if(!all.length)h+=`<section><div class="sec-title"><h3>Probeer alvast</h3></div><div class="cards">${cardHTML(normalize(EXAMPLE),true)}</div><p class="notice">Al puzzels op een ander apparaat? <button class="linkbtn" type="button" data-act="backup">Back-up terugzetten</button></p></section>`;
   main.innerHTML=h+"</div>";
 }
 /* ---------- verzameling: sorteren en filteren op moeilijkheid ---------- */
@@ -591,11 +592,11 @@ function groupedCards(list){
 }
 function renderList(){
   const all=[...S.puzzles.values()];
-  let h=`<button class="linkbtn" type="button" data-act="home" style="padding-left:0">← Terug naar start</button><div class="list-head"><h2>Mijn verzameling <span class="notice">(${all.length})</span></h2></div>`;
+  let h=`<button class="linkbtn" type="button" data-act="home" style="padding-left:0">← Terug naar start</button><div class="list-head"><h2>Mijn verzameling <span class="notice">(${all.length})</span></h2><button class="btn" type="button" data-act="backup">Back-up</button></div>`;
   if(!all.length){
     const ex=normalize(EXAMPLE);
     h+=`<div class="empty"><h3>Nog geen sudoku's in je verzameling</h3><p class="notice">Kies een nieuwe puzzel op de startpagina, of maak een foto van een sudoku uit een boekje, krant of app en kies <b>Digitaliseren</b>.</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="camera">${I.camera}Foto maken</button><button class="btn" type="button" data-act="upload">${I.upload}Foto uploaden</button><button class="btn" type="button" data-act="manual">${I.grid}Zelf overtypen</button></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="camera">${I.camera}Foto maken</button><button class="btn" type="button" data-act="upload">${I.upload}Foto uploaden</button><button class="btn" type="button" data-act="manual">${I.grid}Zelf overtypen</button><button class="btn" type="button" data-act="backup">Back-up terugzetten</button></div></div>
       <div class="list-head"><h2>Probeer alvast</h2></div><div class="cards">${cardHTML(ex,true)}</div>`;
   }else{
     const list=filtered(all);
@@ -892,8 +893,64 @@ function openSettings(){
   const row=(k,l,d)=>`<label class="setrow"><span>${l}<br><span class="notice">${d}</span></span><input type="checkbox" id="set-${k}" data-set="${k}" ${S.settings[k]?"checked":""}></label>`;
   sheet(`<h2>Instellingen</h2>${row("same","Markeer gelijke cijfers","Licht alle vakjes met hetzelfde cijfer op.")}${row("peers","Markeer rij, kolom en blok","Toon de vakjes die bij het gekozen vakje horen.")}${row("live","Fouten meteen tonen","Een fout cijfer wordt direct rood. Uit: alleen na Controleer.")}${row("autonotes","Notities automatisch bijwerken","Haalt een cijfer weg uit de hoek- en middencijfers in dezelfde rij, kolom en blok als je het invult.")}
   <div class="setrow"><span>Fotoherkenning<br><span class="notice">${getKey()?"API-sleutel is ingesteld.":"Nog geen API-sleutel ingesteld."}</span></span><button class="btn" type="button" data-act="key">Sleutel</button></div>
-  <div class="setrow" style="border:0"><span>Puzzel verwijderen uit je verzameling</span><button class="btn danger" type="button" data-act="askdelete">Verwijderen</button></div>
+  <div class="setrow"><span>Back-up<br><span class="notice">Zet je puzzels over naar een ander apparaat.</span></span><button class="btn" type="button" data-act="backup">Back-up</button></div>
+  ${S.view==="play"&&S.cur?`<div class="setrow" style="border:0"><span>Deze puzzel verwijderen uit je verzameling</span><button class="btn danger" type="button" data-act="askdelete">Verwijderen</button></div>`:""}
   <div><button class="btn primary" type="button" data-act="close">Klaar</button></div>`)}
+/* ---------- back-up: puzzels overzetten tussen apparaten ---------- */
+function saveAll(){const all={};for(const p of S.puzzles.values())all[p.id]=serialize(p);
+  try{localStorage.setItem("sudoku-collection",JSON.stringify(all));return true}catch{note("Opslaan in deze browser lukte niet. Misschien is de opslag vol.",true);return false}}
+function backupFile(){
+  if(S.cur)S.cur.updated=Math.max(S.cur.updated,Date.now()-1);
+  const data={app:"sudoku-schrift",version:1,exported:new Date().toISOString(),puzzles:[...S.puzzles.values()].map(serialize)};
+  const d=new Date(),name=`sudoku-backup-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}.json`;
+  return new File([JSON.stringify(data)],name,{type:"application/json"});
+}
+const canShareFiles=()=>{try{return !!navigator.canShare&&navigator.canShare({files:[new File(["{}"],"t.json",{type:"application/json"})]})}catch{return false}};
+function openBackup(msg){
+  const n=S.puzzles.size,solved=[...S.puzzles.values()].filter(p=>p.solvedAt).length;
+  sheet(`<h2>Back-up</h2>
+    <p>Zet je puzzels over naar een ander apparaat, bijvoorbeeld van je Pixel naar je iPad. Je voortgang, notities, kleuren en tijden gaan mee. Je API-sleutel gaat niet mee.</p>
+    ${msg?`<div class="msg ${msg.kind}" role="status">${esc(msg.text)}</div>`:""}
+    <div class="setrow"><span><b>1. Back-up maken</b><br><span class="notice">${n} ${n===1?"puzzel":"puzzels"}, waarvan ${solved} opgelost.</span></span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${canShareFiles()?`<button class="btn primary" type="button" data-act="bk-share" ${n?"":"disabled"}>${I.share.replace('width="14" height="14"','width="18" height="18"')}Delen</button>`:""}
+      <button class="btn ${canShareFiles()?"":"primary"}" type="button" data-act="bk-download" ${n?"":"disabled"}>Bestand opslaan</button>
+    </div>
+    <p class="notice" style="margin:0">${canShareFiles()?"Met <b>Delen</b> stuur je het bestand naar je andere apparaat, via AirDrop, WhatsApp, e-mail of Google Drive. ":""}Met <b>Bestand opslaan</b> komt het in je Downloads of Bestanden. Zet het daarna op je andere apparaat, bijvoorbeeld via e-mail of Google Drive.</p>
+    <div class="setrow"><span><b>2. Terugzetten op het andere apparaat</b><br><span class="notice">Open daar deze app en kies het back-upbestand.</span></span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-act="bk-import">Back-up terugzetten</button><button class="btn ghost" type="button" data-act="close">Sluiten</button></div>
+    <p class="notice" style="margin:0">Terugzetten voegt puzzels samen: nieuwe puzzels komen erbij, en van een puzzel die op beide apparaten staat blijft de nieuwste versie bewaard. Er gaat niets verloren.</p>`);
+}
+async function shareBackup(){
+  const f=backupFile();
+  try{await navigator.share({files:[f],title:"Sudoku Schrift back-up",text:`Back-up met ${S.puzzles.size} sudoku's`})}
+  catch(e){if(e?.name!=="AbortError")openBackup({kind:"bad",text:"Delen lukte niet. Gebruik Bestand opslaan."})}
+}
+function downloadBackup(){
+  const f=backupFile(),url=URL.createObjectURL(f),a=document.createElement("a");
+  a.href=url;a.download=f.name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
+  openBackup({kind:"good",text:`Opgeslagen als ${f.name}.`});
+}
+async function importBackup(file){
+  if(file.size>10*1024*1024)return openBackup({kind:"bad",text:"Dit bestand is te groot voor een back-up van Sudoku Schrift."});
+  let data;try{data=JSON.parse(await file.text())}catch{return openBackup({kind:"bad",text:"Dit is geen geldig back-upbestand. Kies een bestand dat begint met sudoku-backup."})}
+  const list=Array.isArray(data)?data:data?.puzzles;
+  if(!Array.isArray(list))return openBackup({kind:"bad",text:"In dit bestand staan geen puzzels van Sudoku Schrift."});
+  let added=0,updated=0,same=0,skipped=0;
+  for(const raw of list){
+    if(!raw||typeof raw.id!=="string"||typeof raw.givens!=="string"||raw.givens.length!==81){skipped++;continue}
+    const p=normalize(raw),ex=S.puzzles.get(p.id);
+    if(!ex){S.puzzles.set(p.id,p);added++}
+    else if((p.updated||0)>(ex.updated||0)){if(S.cur&&S.cur.id===p.id){same++;continue}S.puzzles.set(p.id,p);updated++}
+    else same++;
+  }
+  if(!saveAll())return openBackup({kind:"bad",text:"Terugzetten lukte niet: de opslag van deze browser is vol."});
+  const parts=[`${added} ${added===1?"puzzel":"puzzels"} toegevoegd`,`${updated} bijgewerkt`,`${same} al aanwezig`];
+  if(skipped)parts.push(`${skipped} overgeslagen`);
+  render();openBackup({kind:"good",text:"Klaar: "+parts.join(", ")+"."});
+}
+
 function confirmSheet(title,text,okLabel,okAct){sheet(`<h2>${title}</h2><p>${text}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${okAct}">${okLabel}</button><button class="btn" type="button" data-act="close">Annuleren</button></div>`)}
 
 function openHelp(){
@@ -937,7 +994,7 @@ document.addEventListener("click",e=>{
   if(t.id==="btnPhoto"){openPhotoSheet();return}
   if(t.id==="btnHome"){goHome();return}
   if(t.dataset.level){newPuzzle(t.dataset.level,t);return}
-  if(t.id==="btnKey"){openKeySheet();return}
+  if(t.id==="btnKey"){openSettings();return}
   if(t.dataset.filter){S.filter=t.dataset.filter;saveView();render();return}
   if(t.dataset.diff){S.diff=t.dataset.diff;saveView();render();return}
   if(t.dataset.open){let p=S.puzzles.get(t.dataset.open);
@@ -982,6 +1039,10 @@ document.addEventListener("click",e=>{
     case"rerase":reviewInput(0);break;
     case"savedigi":saveDigitized();break;
     case"key":openKeySheet();break;
+    case"backup":openBackup();break;
+    case"bk-share":shareBackup();break;
+    case"bk-download":downloadBackup();break;
+    case"bk-import":$("#fileBackup").value="";$("#fileBackup").click();break;
     case"delkey":setKey("");closeSheet();break;
     case"savekey":{const v=($("#keyIn")?.value||"").trim();const err=$("#keyErr");
       if(!v){if(getKey()){closeSheet();break}err.hidden=false;err.textContent="Vul je API-sleutel in.";break}
@@ -994,6 +1055,7 @@ document.addEventListener("change",e=>{
   if((e.target.id==="fileIn"||e.target.id==="fileUp")&&e.target.files[0]){const f=e.target.files[0];
     const quick=S.quickHint;S.quickHint=false;
     prepImage(f).then(b=>{if(photo)URL.revokeObjectURL(photo.url);photo={blob:b,url:URL.createObjectURL(b)};quick?readHint():openPhotoSheet()});return}
+  if(e.target.id==="fileBackup"&&e.target.files[0]){importBackup(e.target.files[0]);return}
   if(e.target.id==="sortSel"){S.sort=e.target.value;saveView();render();return}
   if(e.target.dataset.set){S.settings[e.target.dataset.set]=e.target.checked;ls.set("sudoku-settings",S.settings);if(S.view==="play")render()}
 });

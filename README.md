@@ -39,6 +39,15 @@ Zonder sleutel kun je een puzzel ook zelf overtypen.
 Je verzameling en voortgang worden bewaard in de browser van het apparaat waarop je speelt.
 Een andere browser of een ander apparaat heeft een eigen verzameling.
 
+## Back-up en overzetten
+
+Via het tandwiel of **Back-up** bij Mijn puzzels:
+
+1. **Back-up maken**: met **Delen** (telefoon/tablet: AirDrop, WhatsApp, e-mail, Google Drive) of **Bestand opslaan**.
+2. **Terugzetten**: open de app op het andere apparaat en kies **Back-up terugzetten**.
+
+Terugzetten voegt samen: nieuwe puzzels komen erbij, en van een puzzel die op beide apparaten staat blijft de nieuwste versie bewaard. De API-sleutel zit niet in de back-up.
+
 ## Bestanden
 
 - `index.html`: de hele app (HTML, CSS en JavaScript).
