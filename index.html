@@ -239,6 +239,8 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .cell.wrong{color:var(--bad)}
 .cell.wrong::after{content:"";position:absolute;inset:auto 18% 10% 18%;height:2px;background:var(--bad);border-radius:2px}
 .cell.conflict{box-shadow:inset 0 0 0 2px var(--bad)}
+.board.playing{touch-action:none}
+.cell.msel{box-shadow:inset 0 0 0 2px var(--accent)}
 .cell:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
 .notes{position:absolute;inset:4% 7%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);font-size:2.3cqw;font-weight:500;color:var(--muted);font-family:var(--f-body);line-height:1}
 .notes span{display:flex;align-items:center;justify-content:center}
@@ -787,7 +789,7 @@ function cardHTML(p,example){
 /* ---------- spel ---------- */
 function current(p){return p.givens.map((g,i)=>g||p.entries[i])}
 function openPuzzle(p){
-  S.cur=p;S.sel=Math.max(0,p.givens.findIndex(v=>!v));S.undo=[];S.redo=[];S.hint=null;S.msg=null;S.mode="num";setRules(p);
+  S.cur=p;S.sel=Math.max(0,p.givens.findIndex(v=>!v));S.undo=[];S.redo=[];S.hint=null;S.msg=null;S.mode="num";S.selSet=null;setRules(p);
   if(!p.solution){const r=solve(p.givens,2);p.solution=r.count===1?r.solution:null;p.unique=r.count}
   S.view="play";render();startTimer();
 }
@@ -799,7 +801,9 @@ function cellClasses(p,i,cur,C){
   if(COL(i)%3===2&&COL(i)<8)cls.push("bR");if(ROW(i)%3===2&&ROW(i)<8)cls.push("bB");
   if(p.colors[i])cls.push("k"+p.colors[i]);
   if(S.hint){if(S.hint.house?.includes(i))cls.push("hh");if(S.hint.level>=1&&S.hint.cell===i)cls.push("hc")}
-  if(sel>=0){if(S.settings.peers&&PEERS[sel].includes(i))cls.push("peer");if(S.settings.same&&cur[sel]&&cur[i]===cur[sel]&&i!==sel)cls.push("same");if(i===sel)cls.push("sel")}
+  const multi=S.view==="play"&&S.selSet&&S.selSet.size>1;
+  if(multi){if(S.selSet.has(i))cls.push("sel","msel")}
+  else if(sel>=0){if(S.settings.peers&&PEERS[sel].includes(i))cls.push("peer");if(S.settings.same&&cur[sel]&&cur[i]===cur[sel]&&i!==sel)cls.push("same");if(i===sel)cls.push("sel")}
   if(p.givens[i])cls.push("given");else if(cur[i])cls.push("entry");
   if(cur[i]&&!p.givens[i]){
     const showErr=S.settings.live||S.checkShown;
@@ -847,7 +851,7 @@ function boardHTML(p,cur,editable=true){
     const lbl=`${cellLabel(i)}${cur[i]?": "+cur[i]:": leeg"}${p.givens[i]?" (gegeven)":""}${!cur[i]&&p.notes?.[i]?", hoekcijfers "+bits(p.notes[i]).join(" "):""}${!cur[i]&&p.centers?.[i]?", middencijfers "+bits(p.centers[i]).join(" "):""}`;
     h+=`<button type="button" class="${cellClasses(p,i,cur,C)}" data-cell="${i}" aria-label="${lbl}" tabindex="${i===Math.max(0,S.sel)?0:-1}">${inner}</button>`;
   }
-  return`<div class="boardbox"><div class="board${p.cages&&p.cages.length||p.cageDrawing?" killer":""}" role="grid" aria-label="${p.cages&&p.cages.length?"Killer sudoku-raster":p.thermos&&p.thermos.length?"Thermosudoku-raster":"Sudoku-raster"}" id="board">${h}${thermoSVG(p.thermos,p.drawing)}${cageSVG(p.cages,p.cageDrawing)}</div></div>`;
+  return`<div class="boardbox"><div class="board${p.cages&&p.cages.length||p.cageDrawing?" killer":""}${S.view==="play"?" playing":""}" role="grid" aria-label="${p.cages&&p.cages.length?"Killer sudoku-raster":p.thermos&&p.thermos.length?"Thermosudoku-raster":"Sudoku-raster"}" id="board">${h}${thermoSVG(p.thermos,p.drawing)}${cageSVG(p.cages,p.cageDrawing)}</div></div>`;
 }
 function renderPlay(){
   const p=S.cur,cur=current(p);
@@ -857,7 +861,7 @@ function renderPlay(){
     corner:`<button type="button" class="mode" data-mode="corner" aria-pressed="${S.mode==="corner"}" title="Hoekcijfers: waar kan een cijfer nog staan?" aria-label="Hoekcijfers"><span class="corner"><i>1</i><i>2</i><i>3</i></span></button>`,
     center:`<button type="button" class="mode" data-mode="center" aria-pressed="${S.mode==="center"}" title="Middencijfers: welke cijfers kunnen hier nog?" aria-label="Middencijfers"><span class="center">12</span></button>`,
     color:`<button type="button" class="mode" data-mode="color" aria-pressed="${S.mode==="color"}" title="Vakjes kleuren" aria-label="Vakjes kleuren">${I.palette}</button>`}[m]);
-  const help={num:"Tik een cijfer om het in het vakje te zetten.",corner:"Hoekcijfers: zet kleine cijfers in de hoek van de vakjes waar een cijfer nog kan staan. Zo zie je waar het maar op twee plekken kan.",center:"Middencijfers: zet in het midden de cijfers die in dit vakje nog kunnen. Staat er nog maar één, dan is dat het antwoord.",color:"Kies een kleur voor het gekozen vakje."}[S.mode];
+  const help={num:S.selSet&&S.selSet.size>1?`${S.selSet.size} vakjes geselecteerd. Een cijfer komt in alle vakjes. Tik één vakje aan om terug te gaan.`:"Tik een cijfer om het in het vakje te zetten. Veeg over het raster om meerdere vakjes te kiezen.",corner:"Hoekcijfers: zet kleine cijfers in de hoek van de vakjes waar een cijfer nog kan staan. Zo zie je waar het maar op twee plekken kan.",center:"Middencijfers: zet in het midden de cijfers die in dit vakje nog kunnen. Staat er nog maar één, dan is dat het antwoord.",color:"Kies een kleur voor het gekozen vakje."}[S.mode];
   let pad="";
   if(S.mode==="color"){
     pad=[0,1,2,3,4,5,6].map(k=>k===0?`<button type="button" class="swatch none" data-color="0">Geen</button>`:`<button type="button" class="swatch cell k${k}" data-color="${k}" aria-label="Kleur ${k}"></button>`).join("");
@@ -902,19 +906,33 @@ function renderPlay(){
       </div>
     </aside></div>`;
 }
+/* Geselecteerde vakjes: één vakje, of meerdere door te vegen. */
+const selected=()=>S.selSet&&S.selSet.size>1?[...S.selSet]:(S.sel>=0?[S.sel]:[]);
 function input(d){
-  const p=S.cur;if(!p||S.sel<0)return;const i=S.sel;
-  if(S.mode==="color"){pushUndo();p.colors[i]=d;after();return}
-  if(p.givens[i]||p.solvedAt)return;
+  const p=S.cur;if(!p||S.sel<0||p.solvedAt&&S.mode!=="color")return;
+  const cells=selected();if(!cells.length)return;
+  if(S.mode==="color"){pushUndo();cells.forEach(i=>p.colors[i]=d);after();return}
+  const open=cells.filter(i=>!p.givens[i]);if(!open.length)return;
   pushUndo();
-  if((S.mode==="corner"||S.mode==="center")&&d){if(p.entries[i])return S.undo.pop();
-    if(S.mode==="corner")p.notes[i]^=(1<<d);else p.centers[i]^=(1<<d)}
-  else if(!d){if(p.entries[i])p.entries[i]=0;
-    else if(S.mode==="corner"&&p.notes[i])p.notes[i]=0;
-    else if(S.mode==="center"&&p.centers[i])p.centers[i]=0;
-    else{p.notes[i]=0;p.centers[i]=0}}
-  else{p.entries[i]=p.entries[i]===d?0:d;
-    if(p.entries[i]&&S.settings.autonotes)for(const q of PEERS[i]){p.notes[q]&=~(1<<d);p.centers[q]&=~(1<<d)}}
+  if((S.mode==="corner"||S.mode==="center")&&d){
+    const arr=S.mode==="corner"?p.notes:p.centers,bit=1<<d,targets=open.filter(i=>!p.entries[i]);
+    if(!targets.length)return S.undo.pop();
+    const allHave=targets.every(i=>arr[i]&bit);   // staat hij overal al: weghalen, anders overal toevoegen
+    targets.forEach(i=>{arr[i]=allHave?arr[i]&~bit:arr[i]|bit});
+  }
+  else if(!d){
+    const anyEntry=open.some(i=>p.entries[i]);
+    open.forEach(i=>{
+      if(anyEntry){p.entries[i]=0;return}
+      if(S.mode==="corner"&&open.some(j=>p.notes[j]))p.notes[i]=0;
+      else if(S.mode==="center"&&open.some(j=>p.centers[j]))p.centers[i]=0;
+      else{p.notes[i]=0;p.centers[i]=0}});
+  }
+  else{
+    const allHave=open.every(i=>p.entries[i]===d);
+    open.forEach(i=>{p.entries[i]=allHave?0:d;
+      if(p.entries[i]&&S.settings.autonotes)for(const q of PEERS[i]){p.notes[q]&=~(1<<d);p.centers[q]&=~(1<<d)}});
+  }
   after(true);
 }
 function after(changed){
@@ -995,7 +1013,7 @@ Answer with only JSON in exactly this shape:
 It may also be a killer sudoku: dashed or dotted cages with a small sum printed in a corner of the cage. If so, list every cage as {"sum":23,"cells":[[1,1],[1,2],[2,1]]} with 1-based [row, column]. The small cage sums are not cell digits: do not put them in rows.
 Add "cages":[...] to the JSON. Use "thermos":[] and "cages":[] for an ordinary sudoku.
 Use null for stars, difficultyText or title when there is none. difficultyText is a short Dutch phrase as the user would say it (e.g. "7 sterren", "Moeilijk", "Niveau 3"). If there is no sudoku in the photo, answer {"found":false}. Output only the JSON object, with no other text.`;
-const APP_VERSION="14";
+const APP_VERSION="15";
 /* Welke herkenning? Claude met sleutel, anders (of op verzoek) gratis op het apparaat. */
 const useFreeOCR=()=>!getKey()||!!S.settings.freeOcr||S.freeOnce;
 function loadOCR(){return window.SudokuOCR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="ocr.js?v="+APP_VERSION;sc.onload=()=>res();sc.onerror=()=>rej(new Error("De gratis herkenning kon niet worden geladen. Ben je verbonden met internet?"));document.head.appendChild(sc)})}
@@ -1224,7 +1242,7 @@ function openHelp(){
     ${r(I.check,"Controleer: kijk of je cijfers kloppen. Is alles goed, dan volgt een feestje.")}
     ${r('<svg viewBox="0 0 24 24" width="24" height="24"><circle cx="6" cy="12" r="4" fill="var(--thermo)"/><path d="M6 12h14" stroke="var(--thermo)" stroke-width="3" stroke-linecap="round"/></svg>',"Thermosudoku: op elke thermometer worden de cijfers vanaf het bolletje steeds hoger. Kies Thermo bij Nieuwe puzzel.")}
     ${r('<svg viewBox="0 0 24 24" width="24" height="24"><rect x="3" y="3" width="18" height="18" rx="1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/><text x="5" y="10" font-size="7" font-weight="700" fill="currentColor">15</text></svg>',"Killer sudoku: de cijfers in elke kooi tellen op tot het getal linksboven, zonder dubbele cijfers in de kooi. Kies Killer bij Nieuwe puzzel.")}
-    </dl><p class="notice">Met een toetsenbord: pijltjes om te bewegen, 1-9 om in te vullen, N om te wisselen tussen groot, hoek en midden.</p>
+    </dl><p class="notice">Veeg met je vinger over het raster om meerdere vakjes te kiezen; een cijfer, hoek- of middencijfer, kleur of Wissen geldt dan voor al die vakjes. Met een toetsenbord: Shift of Ctrl ingedrukt houden en klikken.</p><p class="notice">Met een toetsenbord: pijltjes om te bewegen, 1-9 om in te vullen, N om te wisselen tussen groot, hoek en midden.</p>
     <div><button class="btn primary" type="button" data-act="close">Begrepen</button></div>`)}
 
 /* ---------- feest ---------- */
@@ -1275,6 +1293,11 @@ document.addEventListener("click",e=>{
   if(t.dataset.cell!==undefined&&S.view==="review"&&S.review?.drawing){const i=+t.dataset.cell,d=S.review.drawing,last=d[d.length-1];
     if(d.includes(i)){if(i===last)d.pop()}else if(!d.length||Math.max(Math.abs(ROW(i)-ROW(last)),Math.abs(COL(i)-COL(last)))===1)d.push(i);
     renderReview();return}
+  if(t.dataset.cell!==undefined&&S.view==="play"&&S.dragMoved){S.dragMoved=false;return}
+  if(t.dataset.cell!==undefined&&S.view==="play"&&(e.shiftKey||e.ctrlKey||e.metaKey)){const i=+t.dataset.cell;
+    if(!S.selSet||S.selSet.size<2)S.selSet=new Set(S.sel>=0?[S.sel]:[]);
+    S.selSet.has(i)&&S.selSet.size>1?S.selSet.delete(i):S.selSet.add(i);S.sel=i;render();return}
+  if(t.dataset.cell!==undefined&&S.view==="play")S.selSet=null;
   if(t.dataset.cell!==undefined){const i=+t.dataset.cell;if(S.view==="review"){S.review.sel=i;renderReview()}else{S.sel=i;render()}main.querySelector(`[data-cell="${i}"]`)?.focus({preventScroll:true});return}
   if(t.dataset.digit){input(+t.dataset.digit);return}
   if(t.dataset.color!==undefined){input(+t.dataset.color);return}
@@ -1361,7 +1384,7 @@ document.addEventListener("keydown",e=>{
   const inReview=S.view==="review",inPlay=S.view==="play";if(!inReview&&!inPlay)return;
   let sel=inReview?S.review.sel:S.sel;
   const mv={ArrowUp:-9,ArrowDown:9,ArrowLeft:-1,ArrowRight:1}[e.key];
-  if(mv){e.preventDefault();sel=sel<0?0:sel;const r=ROW(sel),c=COL(sel);
+  if(mv){e.preventDefault();S.selSet=null;sel=sel<0?0:sel;const r=ROW(sel),c=COL(sel);
     const nr=(r+(mv===-9?-1:mv===9?1:0)+9)%9,nc=(c+(mv===-1?-1:mv===1?1:0)+9)%9;sel=nr*9+nc;
     if(inReview){S.review.sel=sel;renderReview()}else{S.sel=sel;render()}
     main.querySelector(`[data-cell="${sel}"]`)?.focus({preventScroll:true});return}
@@ -1370,6 +1393,24 @@ document.addEventListener("keydown",e=>{
   if(inPlay&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();document.querySelector(`[data-act="${e.shiftKey?"redo":"undo"}"]`)?.click();return}
   if(inPlay&&e.key.toLowerCase()==="n"){S.mode={num:"corner",corner:"center",center:"num",color:"num"}[S.mode];render()}
 });
+/* Vegen over het raster selecteert meerdere vakjes. */
+(function(){
+  let drag=null;
+  const cellAt=(x,y)=>{const el=document.elementFromPoint(x,y)?.closest?.("[data-cell]");return el&&el.closest(".board.playing")?+el.dataset.cell:-1};
+  const paint=()=>{main.querySelectorAll(".board.playing [data-cell]").forEach(el=>{const on=drag.set.has(+el.dataset.cell);el.classList.toggle("msel",on&&drag.set.size>1);el.classList.toggle("sel",on);if(drag.set.size>1)el.classList.remove("peer","same")})};
+  document.addEventListener("pointerdown",e=>{
+    if(S.view!=="play"||e.button>0||e.shiftKey||e.ctrlKey||e.metaKey)return;const i=cellAt(e.clientX,e.clientY);if(i<0)return;
+    drag={start:i,last:i,set:new Set([i]),id:e.pointerId};S.dragMoved=false;
+  });
+  document.addEventListener("pointermove",e=>{
+    if(!drag||e.pointerId!==drag.id)return;const i=cellAt(e.clientX,e.clientY);if(i<0||i===drag.last)return;
+    drag.last=i;drag.set.add(i);if(drag.set.size>1){S.dragMoved=true;paint()}
+  });
+  const end=e=>{if(!drag||e.pointerId!==drag.id)return;
+    if(drag.set.size>1){S.selSet=drag.set;S.sel=drag.last;S.hint=null;render()}
+    drag=null};
+  document.addEventListener("pointerup",end);document.addEventListener("pointercancel",end);
+})();
 function goHome(){closeSheet();if(S.cur)persist(S.cur,true);S.view="home";S.cur=null;S.review=null;S.hint=null;render();window.scrollTo(0,0)}
 function goList(){if(S.cur)persist(S.cur,true);S.view="list";S.cur=null;S.review=null;S.hint=null;render();window.scrollTo(0,0)}
 
