@@ -857,17 +857,18 @@ function renderPlay(){
   const p=S.cur,cur=current(p);
   const counts=Array(10).fill(0);cur.forEach(v=>v&&counts[v]++);
   const modeBtn=m=>({
-    num:`<button type="button" class="mode" data-mode="num" aria-pressed="${S.mode==="num"}" title="Cijfer invullen" aria-label="Cijfer invullen"><span class="big">9</span></button>`,
-    corner:`<button type="button" class="mode" data-mode="corner" aria-pressed="${S.mode==="corner"}" title="Hoekcijfers: waar kan een cijfer nog staan?" aria-label="Hoekcijfers"><span class="corner"><i>1</i><i>2</i><i>3</i></span></button>`,
+    num:`<button type="button" class="mode" data-mode="num" aria-pressed="${effMode()==="num"}" title="Cijfer invullen" aria-label="Cijfer invullen"><span class="big">9</span></button>`,
+    corner:`<button type="button" class="mode" data-mode="corner" aria-pressed="${effMode()==="corner"}" title="Hoekcijfers: waar kan een cijfer nog staan?" aria-label="Hoekcijfers"><span class="corner"><i>1</i><i>2</i><i>3</i></span></button>`,
     center:`<button type="button" class="mode" data-mode="center" aria-pressed="${S.mode==="center"}" title="Middencijfers: welke cijfers kunnen hier nog?" aria-label="Middencijfers"><span class="center">12</span></button>`,
     color:`<button type="button" class="mode" data-mode="color" aria-pressed="${S.mode==="color"}" title="Vakjes kleuren" aria-label="Vakjes kleuren">${I.palette}</button>`}[m]);
-  const help={num:S.selSet&&S.selSet.size>1?`${S.selSet.size} vakjes geselecteerd. Een cijfer komt in alle vakjes. Tik één vakje aan om terug te gaan.`:"Tik een cijfer om het in het vakje te zetten. Veeg over het raster om meerdere vakjes te kiezen.",corner:"Hoekcijfers: zet kleine cijfers in de hoek van de vakjes waar een cijfer nog kan staan. Zo zie je waar het maar op twee plekken kan.",center:"Middencijfers: zet in het midden de cijfers die in dit vakje nog kunnen. Staat er nog maar één, dan is dat het antwoord.",color:"Kies een kleur voor het gekozen vakje."}[S.mode];
+  const multiN=S.selSet&&S.selSet.size>1?S.selSet.size:0;
+  const help={num:multiN?`${multiN} vakjes geselecteerd: cijfers komen als hoekcijfers in alle vakjes. Kies 12 voor middencijfers. Tik één vakje aan om terug te gaan.`:"Tik een cijfer om het in het vakje te zetten. Veeg over het raster om meerdere vakjes te kiezen.",corner:multiN?`${multiN} vakjes geselecteerd: cijfers komen als hoekcijfers in alle vakjes.`:"Hoekcijfers: zet kleine cijfers in de hoek van de vakjes waar een cijfer nog kan staan. Zo zie je waar het maar op twee plekken kan.",center:multiN?`${multiN} vakjes geselecteerd: cijfers komen als middencijfers in alle vakjes.`:"Middencijfers: zet in het midden de cijfers die in dit vakje nog kunnen. Staat er nog maar één, dan is dat het antwoord.",color:"Kies een kleur voor het gekozen vakje."}[S.mode==="num"&&multiN?"num":S.mode];
   let pad="";
   if(S.mode==="color"){
     pad=[0,1,2,3,4,5,6].map(k=>k===0?`<button type="button" class="swatch none" data-color="0">Geen</button>`:`<button type="button" class="swatch cell k${k}" data-color="${k}" aria-label="Kleur ${k}"></button>`).join("");
     pad=`<div class="padgrid" style="grid-template-columns:repeat(4,1fr)">${pad}</div><div class="padgrid" style="grid-template-columns:repeat(4,1fr)">${["num","corner","center","color"].map(m=>modeBtn(m).replace('class="mode"','class="mode" style="height:56px"')).join("")}</div>`;
   }else{
-    const kc=S.mode==="corner"?" cornerkey":S.mode==="center"?" centerkey":"";
+    const kc=effMode()==="corner"?" cornerkey":effMode()==="center"?" centerkey":"";
     const keys=[1,2,3,"num",4,5,6,"corner",7,8,9,"center"].map(k=>{
       if(typeof k==="string")return modeBtn(k);
       const left=9-counts[k];
@@ -908,14 +909,17 @@ function renderPlay(){
 }
 /* Geselecteerde vakjes: één vakje, of meerdere door te vegen. */
 const selected=()=>S.selSet&&S.selSet.size>1?[...S.selSet]:(S.sel>=0?[S.sel]:[]);
+/* Met meer dan één vakje geselecteerd worden cijfers hoekcijfers (of middencijfers in de 12-stand). */
+const effMode=()=>S.selSet&&S.selSet.size>1&&S.mode==="num"?"corner":S.mode;
 function input(d){
+  const mode=effMode();
   const p=S.cur;if(!p||S.sel<0||p.solvedAt&&S.mode!=="color")return;
   const cells=selected();if(!cells.length)return;
-  if(S.mode==="color"){pushUndo();cells.forEach(i=>p.colors[i]=d);after();return}
+  if(mode==="color"){pushUndo();cells.forEach(i=>p.colors[i]=d);after();return}
   const open=cells.filter(i=>!p.givens[i]);if(!open.length)return;
   pushUndo();
-  if((S.mode==="corner"||S.mode==="center")&&d){
-    const arr=S.mode==="corner"?p.notes:p.centers,bit=1<<d,targets=open.filter(i=>!p.entries[i]);
+  if((mode==="corner"||mode==="center")&&d){
+    const arr=mode==="corner"?p.notes:p.centers,bit=1<<d,targets=open.filter(i=>!p.entries[i]);
     if(!targets.length)return S.undo.pop();
     const allHave=targets.every(i=>arr[i]&bit);   // staat hij overal al: weghalen, anders overal toevoegen
     targets.forEach(i=>{arr[i]=allHave?arr[i]&~bit:arr[i]|bit});
@@ -924,8 +928,8 @@ function input(d){
     const anyEntry=open.some(i=>p.entries[i]);
     open.forEach(i=>{
       if(anyEntry){p.entries[i]=0;return}
-      if(S.mode==="corner"&&open.some(j=>p.notes[j]))p.notes[i]=0;
-      else if(S.mode==="center"&&open.some(j=>p.centers[j]))p.centers[i]=0;
+      if(mode==="corner"&&open.some(j=>p.notes[j]))p.notes[i]=0;
+      else if(mode==="center"&&open.some(j=>p.centers[j]))p.centers[i]=0;
       else{p.notes[i]=0;p.centers[i]=0}});
   }
   else{
@@ -1013,7 +1017,7 @@ Answer with only JSON in exactly this shape:
 It may also be a killer sudoku: dashed or dotted cages with a small sum printed in a corner of the cage. If so, list every cage as {"sum":23,"cells":[[1,1],[1,2],[2,1]]} with 1-based [row, column]. The small cage sums are not cell digits: do not put them in rows.
 Add "cages":[...] to the JSON. Use "thermos":[] and "cages":[] for an ordinary sudoku.
 Use null for stars, difficultyText or title when there is none. difficultyText is a short Dutch phrase as the user would say it (e.g. "7 sterren", "Moeilijk", "Niveau 3"). If there is no sudoku in the photo, answer {"found":false}. Output only the JSON object, with no other text.`;
-const APP_VERSION="16";
+const APP_VERSION="17";
 /* Welke herkenning? Claude met sleutel, anders (of op verzoek) gratis op het apparaat. */
 const useFreeOCR=()=>!getKey()||!!S.settings.freeOcr||S.freeOnce;
 function loadOCR(){return window.SudokuOCR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="ocr.js?v="+APP_VERSION;sc.onload=()=>res();sc.onerror=()=>rej(new Error("De gratis herkenning kon niet worden geladen. Ben je verbonden met internet?"));document.head.appendChild(sc)})}
@@ -1271,16 +1275,37 @@ function celebrate(p){
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn primary" type="button" data-act="home">Nieuwe puzzel kiezen</button><button class="btn" type="button" data-act="list">Naar verzameling</button><button class="btn" type="button" data-act="close">Bekijk de puzzel</button></div>`,"party");
   confetti();
 }
+/* Confetti blijft vallen tot je ergens op het scherm tikt of klikt. */
+let confettiStop=null;
 function confetti(){
   const cv=$("#confetti");if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
-  cv.hidden=false;const ctx=cv.getContext("2d"),W=cv.width=innerWidth*devicePixelRatio,Hh=cv.height=innerHeight*devicePixelRatio;
+  if(confettiStop)confettiStop();
+  cv.hidden=false;const ctx=cv.getContext("2d");let W,Hh;
+  const size=()=>{W=cv.width=innerWidth*devicePixelRatio;Hh=cv.height=innerHeight*devicePixelRatio};size();
   const cols=["#4a3fc4","#f2a516","#ef5b6b","#5cc477","#4f9cf0","#ffd34d","#9c74f0"];
-  const parts=[...Array(220)].map((_,k)=>({x:W*(k%2?0.15:0.85),y:Hh*0.65,vx:(Math.random()-.5)*W*0.018+(k%2?1:-1)*W*0.006,vy:-Math.random()*Hh*0.03-Hh*0.012,s:(6+Math.random()*8)*devicePixelRatio,r:Math.random()*6,vr:(Math.random()-.5)*.3,c:cols[k%cols.length],sh:k%3}));
-  const t0=performance.now();
-  (function frame(t){const el=t-t0;ctx.clearRect(0,0,W,Hh);
-    for(const p of parts){p.vy+=Hh*0.0006;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;ctx.globalAlpha=Math.max(0,1-el/4500);
-      if(p.sh===0)ctx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);else if(p.sh===1){ctx.beginPath();ctx.arc(0,0,p.s/3,0,7);ctx.fill()}else{ctx.font=`${p.s*1.6}px Outfit,sans-serif`;ctx.fillText(String(1+(Math.abs(p.x|0)%9)),0,0)}ctx.restore()}
-    if(el<4500)requestAnimationFrame(frame);else{ctx.clearRect(0,0,W,Hh);cv.hidden=true}})(t0);
+  const make=(k,burst)=>{const side=k%2;return burst
+    ?{x:W*(side?0.15:0.85),y:Hh*0.65,vx:(Math.random()-.5)*W*0.018+(side?1:-1)*W*0.006,vy:-Math.random()*Hh*0.03-Hh*0.012}
+    :{x:Math.random()*W,y:-20*devicePixelRatio,vx:(Math.random()-.5)*W*0.003,vy:Math.random()*Hh*0.004+Hh*0.002}};
+  const part=(k,burst)=>Object.assign(make(k,burst),{s:(6+Math.random()*8)*devicePixelRatio,r:Math.random()*6,vr:(Math.random()-.5)*.3,c:cols[k%cols.length],sh:k%3,n:1+Math.floor(Math.random()*9),sway:Math.random()*6});
+  let parts=[...Array(220)].map((_,k)=>part(k,true)),k=0,running=true,fade=1;
+  const stop=()=>{running=false};
+  confettiStop=stop;
+  const onTap=e=>{stop();document.removeEventListener("pointerdown",onTap,true);
+    // een tik naast het felicitatievenster stopt alleen de confetti en sluit het venster niet
+    if(e.target&&e.target.classList&&e.target.classList.contains("sheet-back")){const swallow=ev=>{ev.stopPropagation();ev.preventDefault();document.removeEventListener("click",swallow,true)};document.addEventListener("click",swallow,true);setTimeout(()=>document.removeEventListener("click",swallow,true),800)}};
+  setTimeout(()=>document.addEventListener("pointerdown",onTap,true),300);
+  addEventListener("resize",size);
+  (function frame(t){
+    ctx.clearRect(0,0,W,Hh);
+    if(running&&parts.length<260)for(let i=0;i<3;i++)parts.push(part(k++,false));   // blijft regenen
+    if(!running)fade-=0.04;
+    for(const p of parts){p.vy+=Hh*0.0004;p.vy=Math.min(p.vy,Hh*0.012);p.vx*=.99;p.x+=p.vx+Math.sin((t/400)+p.sway)*0.6*devicePixelRatio;p.y+=p.vy;p.r+=p.vr;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;ctx.globalAlpha=Math.max(0,fade);
+      if(p.sh===0)ctx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);else if(p.sh===1){ctx.beginPath();ctx.arc(0,0,p.s/3,0,7);ctx.fill()}else{ctx.font=`${p.s*1.6}px Outfit,sans-serif`;ctx.fillText(String(p.n),0,0)}
+      ctx.restore()}
+    parts=parts.filter(p=>p.y<Hh+40*devicePixelRatio);
+    if(fade>0)requestAnimationFrame(frame);else{ctx.clearRect(0,0,W,Hh);cv.hidden=true;removeEventListener("resize",size);if(confettiStop===stop)confettiStop=null}
+  })(performance.now());
 }
 
 /* ---------- gebeurtenissen ---------- */
