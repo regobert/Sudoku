@@ -428,18 +428,18 @@ function conflicts(g){const bad=new Set();for(let i=0;i<81;i++)if(g[i])for(const
   return bad}
 function solve(g0,limit=2){
   const g=g0.slice();if(conflicts(g).size)return{count:0,solution:null};
-  let count=0,solution=null,steps=0;
+  let count=0,solution=null,second=null,steps=0;
   (function rec(){
     if(count>=limit||steps>200000)return;steps++;
     let best=-1,bm=0,bc=10;
     for(let i=0;i<81;i++)if(!g[i]){let m=0b1111111110;for(const p of PEERS[i])if(g[p])m&=~(1<<g[p]);if(THERMOS.length)m&=thermoMask(g,i);if(CAGES.length)m&=cageMask(g,i);const c=pop(m);if(c<bc){bc=c;best=i;bm=m;if(c<=1)break}}
-    if(best<0){count++;if(!solution)solution=g.slice();return}
+    if(best<0){count++;if(!solution)solution=g.slice();else if(!second)second=g.slice();return}
     if(bc===0)return;
     for(const d of bits(bm)){g[best]=d;rec();if(count>=limit)break}
     g[best]=0;
   })();
   if(steps>200000&&count<limit)count=limit;
-  return{count,solution,steps};
+  return{count,solution,second,steps};
 }
 const BOXNAME=["linksboven","middenboven","rechtsboven","links in het midden","in het midden","rechts in het midden","linksonder","middenonder","rechtsonder"];
 const houseLabel=h=>h.type==="blok"?`het blok ${BOXNAME[h.n]}`:`${h.type} ${h.n+1}`;
@@ -880,7 +880,7 @@ function renderPlay(){
   if(S.hint){const H=S.hint;hint=`<div class="hintcard" role="status"><span class="lvl">Hint ${H.level+1} van ${H.steps.length}</span><p>${esc(H.steps[H.level])}</p>
     <div class="acts">${H.level<H.steps.length-1?`<button class="btn" type="button" data-act="hintmore">${I.bulb}Meer hulp</button>`:""}<button class="btn ghost" type="button" data-act="hintclose">Sluiten</button></div></div>`}
   const msg=S.msg?`<div class="msg ${S.msg.kind}" role="status">${esc(S.msg.text)}</div>`:"";
-  const uniq=p.unique===0?`<div class="msg bad">Deze puzzel heeft geen oplossing. Misschien is een cijfer verkeerd overgenomen. Controleer de puzzel met je foto.</div>`:p.unique>1?`<div class="msg info">Deze puzzel heeft meer dan één oplossing. Controleren gebeurt op de regels.</div>`:"";
+  const uniq=p.unique===0?`<div class="msg bad">Deze puzzel heeft geen oplossing. Misschien is een cijfer verkeerd overgenomen. <button class="linkbtn" type="button" data-act="editpuzzle">Puzzel aanpassen</button></div>`:p.unique>1?`<div class="msg bad">Deze puzzel heeft meer dan één oplossing, dus er ontbreekt waarschijnlijk een cijfer. <button class="linkbtn" type="button" data-act="editpuzzle">Puzzel aanpassen</button></div>`:"";
   main.innerHTML=`<div class="play">
     <section class="boardcol">
       <div class="board-head"><h2>${esc(p.title)}</h2>${starsHTML(p)}<span class="timer" id="timer" aria-label="Speeltijd">${fmtTime(p.seconds)}</span></div>
@@ -1013,7 +1013,7 @@ Answer with only JSON in exactly this shape:
 It may also be a killer sudoku: dashed or dotted cages with a small sum printed in a corner of the cage. If so, list every cage as {"sum":23,"cells":[[1,1],[1,2],[2,1]]} with 1-based [row, column]. The small cage sums are not cell digits: do not put them in rows.
 Add "cages":[...] to the JSON. Use "thermos":[] and "cages":[] for an ordinary sudoku.
 Use null for stars, difficultyText or title when there is none. difficultyText is a short Dutch phrase as the user would say it (e.g. "7 sterren", "Moeilijk", "Niveau 3"). If there is no sudoku in the photo, answer {"found":false}. Output only the JSON object, with no other text.`;
-const APP_VERSION="15";
+const APP_VERSION="16";
 /* Welke herkenning? Claude met sleutel, anders (of op verzoek) gratis op het apparaat. */
 const useFreeOCR=()=>!getKey()||!!S.settings.freeOcr||S.freeOnce;
 function loadOCR(){return window.SudokuOCR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="ocr.js?v="+APP_VERSION;sc.onload=()=>res();sc.onerror=()=>rej(new Error("De gratis herkenning kon niet worden geladen. Ben je verbonden met internet?"));document.head.appendChild(sc)})}
@@ -1073,17 +1073,19 @@ function reviewStatus(R){
   setRules(R);
   const givens=R.digits.map((v,i)=>R.kind[i]==="P"?v:0);const all=R.digits;
   const cf=conflicts(all);
-  const nGiven=givens.filter(Boolean).length;
-  if(cf.size)return{kind:"bad",text:"Er staan dubbele cijfers in een rij, kolom of blok (rood omrand). Vergelijk met je foto en verbeter ze.",solution:null,cf};
-  if(nGiven<17&&!THERMOS.length&&!CAGES.length)return{kind:"info",text:`${nGiven} cijfers ingevuld. Een sudoku heeft er minstens 17 nodig. Is het een thermosudoku? Teken dan de thermometers.`,solution:null,cf};
+  const nGiven=givens.filter(Boolean).length,extra=THERMOS.length||CAGES.length;
+  const fix="Pas de puzzel hieronder aan: tik een vakje en kies het goede cijfer, of gebruik Wissen.";
+  if(cf.size)return{ok:false,kind:"bad",text:"Er staan dubbele cijfers in een rij, kolom of blok (rood omrand). Vergelijk met je foto en verbeter ze.",solution:null,cf};
+  if(nGiven<17&&!extra)return{ok:false,kind:"info",text:`${nGiven} cijfers ingevuld. Een sudoku heeft er minstens 17 nodig. Is het een thermo- of killersudoku? Teken dan de thermometers of kooien.`,solution:null,cf};
   const r=solve(givens,2);
-  if(r.count===0)return{kind:"bad",text:"Met deze cijfers is de puzzel niet op te lossen. Waarschijnlijk is een cijfer verkeerd gelezen.",solution:null,cf};
+  if(r.count===0)return{ok:false,kind:"bad",text:"Met deze cijfers is de puzzel niet op te lossen, dus hij wordt niet opgeslagen. Waarschijnlijk is een cijfer verkeerd gelezen. "+fix,solution:null,cf};
+  if(r.count>1){const amb=new Set();if(r.second)for(let i=0;i<81;i++)if(r.solution[i]!==r.second[i])amb.add(i);
+    return{ok:false,kind:"bad",text:`Deze puzzel heeft meer dan één oplossing, dus hij wordt niet opgeslagen. In de oranje vakjes kan de puzzel op meer manieren worden ingevuld; daar ontbreekt waarschijnlijk een gedrukt cijfer${extra?", thermometer of kooi":""}. ${fix}`,solution:null,cf,givens,amb}}
   const r2=solve(all,1);
-  if(r.count>1)return{kind:"info",text:"Let op: met deze cijfers heeft de puzzel meer dan één oplossing. Controleer of alle cijfers kloppen.",solution:null,cf,givens};
-  if(r2.count===0)return{kind:"bad",text:"De gedrukte cijfers kloppen, maar een van de zelf ingevulde cijfers is fout.",solution:r.solution,cf,givens};
+  if(r2.count===0)return{ok:true,kind:"bad",text:"De gedrukte cijfers kloppen en hebben precies één oplossing, maar een van de zelf ingevulde cijfers is fout.",solution:r.solution,cf,givens};
   if(CAGES.length){const cov=new Set(CAGES.flatMap(k=>k.cells)).size,tot=CAGES.reduce((a,k)=>a+k.sum,0);
-    return{kind:"good",text:`${CAGES.length} kooien gelezen${cov===81?(tot===405?"":` (let op: de sommen tellen op tot ${tot}, dat moet 405 zijn)`):` (${81-cov} vakjes zitten nog niet in een kooi)`}. De puzzel heeft precies één oplossing.`,solution:r.solution,cf,givens}}
-  return{kind:"good",text:THERMOS.length?`Alle cijfers en ${THERMOS.length} thermometers gelezen. De puzzel heeft precies één oplossing.`:"Alle cijfers gelezen. De puzzel heeft precies één oplossing.",solution:r.solution,cf,givens};
+    return{ok:true,kind:"good",text:`${CAGES.length} kooien gelezen${cov===81?(tot===405?"":` (let op: de sommen tellen op tot ${tot}, dat moet 405 zijn)`):` (${81-cov} vakjes zitten nog niet in een kooi)`}. De puzzel heeft precies één oplossing.`,solution:r.solution,cf,givens}}
+  return{ok:true,kind:"good",text:THERMOS.length?`Alle cijfers en ${THERMOS.length} thermometers gelezen. De puzzel heeft precies één oplossing.`:"Alle cijfers gelezen. De puzzel heeft precies één oplossing.",solution:r.solution,cf,givens};
 }
 function renderReview(){
   const R=S.review,st=reviewStatus(R);
@@ -1104,18 +1106,19 @@ function renderReview(){
   let side="";
   if(R.mode==="hint"){
     const H=R.hintState;
-    side=`<div class="hintcard" role="status">${H?(H.done?`<p>Deze puzzel is al opgelost. Knap gedaan!</p>`:`<span class="lvl">Hint ${H.level+1} van ${H.steps.length}</span><p>${esc(H.steps[H.level])}</p>${H.level<H.steps.length-1?`<div class="acts"><button class="btn" type="button" data-act="rhintmore">${I.bulb}Meer hulp</button></div>`:""}`):`<p>Kon geen hint maken. Controleer of de cijfers goed zijn gelezen.</p>`}</div>
+    side=`<div class="hintcard" role="status">${H?(H.done?`<p>Deze puzzel is al opgelost. Knap gedaan!</p>`:`${H.blocked?"":`<span class="lvl">Hint ${H.level+1} van ${H.steps.length}</span>`}<p>${esc(H.steps[H.level])}</p>${H.level<H.steps.length-1?`<div class="acts"><button class="btn" type="button" data-act="rhintmore">${I.bulb}Meer hulp</button></div>`:""}`):`<p>Kon geen hint maken. Controleer of de cijfers goed zijn gelezen.</p>`}</div>
       <p class="notice">Klopt een cijfer niet met je foto? Tik het vakje aan en kies het goede cijfer. De hint past zich aan.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="quickhint">${I.camera}Nieuwe foto, volgende hint</button><button class="btn" type="button" data-act="quickhint-up">${I.upload}Uit fotorol</button><button class="btn" type="button" data-act="todigi">${I.grid}Toch digitaliseren</button></div>`;
   }else{
     side=`<div class="fields"><label class="field">Naam<input id="rTitle" value="${esc(R.title)}"></label>
       <label class="field">Sterren<input id="rStars" type="number" min="0" max="20" inputmode="numeric" value="${R.stars??""}" placeholder="–"></label></div>
       <label class="field">Moeilijkheid (zoals op de foto)<input id="rDiff" value="${esc(R.difficultyText)}" placeholder="bijv. 7 sterren of Moeilijk"></label>
-      <button class="btn primary" type="button" data-act="savedigi">${I.check}Toevoegen aan verzameling</button>`;
+      <button class="btn primary" type="button" data-act="savedigi" ${st.ok?"":"disabled"}>${I.check}${R.editId?"Wijzigingen opslaan":"Toevoegen aan verzameling"}</button>
+      ${st.ok?"":`<p class="notice" style="margin:0">Opslaan kan zodra de puzzel precies één oplossing heeft.</p>`}`;
   }
   main.innerHTML=`<div class="play">
     <section class="boardcol">
-      <div class="board-head"><h2>${R.mode==="hint"?"Hint voor je puzzel":"Controleer de cijfers"}</h2>${R.stars||R.difficultyText?starsHTML(R):""}</div>
+      <div class="board-head"><h2>${R.mode==="hint"?"Hint voor je puzzel":R.editId?"Puzzel aanpassen":"Controleer de cijfers"}</h2>${R.stars||R.difficultyText?starsHTML(R):""}</div>
       ${R.mode==="hint"?side:""}
       ${board}
       <div class="legend"><span><b>5</b> gedrukt cijfer</span><span><b style="color:var(--entry)">5</b> zelf ingevuld</span>${(R.thermos||[]).length?`<span>Thermometers: cijfers stijgen vanaf het bolletje</span>`:""}</div>
@@ -1127,6 +1130,7 @@ function renderReview(){
       <div class="msg ${st.kind}">${esc(st.text)}</div>
       ${R.engine!=="free"&&(R.autoThermos||R.thermoSearchDone)?`<p class="notice" style="margin:0">${R.autoThermos?`${R.autoThermos} thermometer${R.autoThermos>1?"s":""} automatisch gevonden. Vergelijk ze met je foto.`:"Geen thermometers gevonden op de foto."}</p>`:""}
       ${R.engine==="free"?`<p class="notice" style="margin:0">Gelezen met de gratis herkenning. ${R.autoThermos?`${R.autoThermos} thermometer${R.autoThermos>1?"s":""} automatisch gevonden. `:R.thermoSearchDone?"Geen thermometers gevonden op de foto. ":""}Vergelijk de cijfers${R.autoThermos?" en thermometers":""} met je foto${R.unsure&&R.unsure.size?`; ${R.unsure.size} ${R.unsure.size===1?"twijfelgeval is":"twijfelgevallen zijn"} oranje omrand`:""}.${R.mode!=="hint"?" Sterren vul je zelf in.":""}</p>`:""}
+      <p class="notice" style="margin:0"><b>Handmatig aanpassen:</b> tik een vakje en kies een cijfer. Wissen maakt het vakje leeg; Gedrukt / zelf wisselt tussen een gedrukt cijfer en een cijfer dat je zelf had ingevuld.</p>
       <div class="padgrid" style="grid-template-columns:repeat(3,1fr)">${keys}
         <button type="button" class="tool" data-act="rkind" style="aspect-ratio:auto;height:54px">${I.pencil}<span>Gedrukt / zelf</span></button>
         <button type="button" class="tool" data-act="rerase" style="aspect-ratio:auto;height:54px">${I.erase}<span>Wissen</span></button>
@@ -1135,19 +1139,32 @@ function renderReview(){
     </aside></div>`;
   R.status=st;
   if(R.unsure&&R.unsure.size)R.unsure.forEach(i=>main.querySelector(`[data-cell="${i}"]`)?.classList.add("unsure"));
+  if(st.amb)st.amb.forEach(i=>main.querySelector(`[data-cell="${i}"]`)?.classList.add("unsure"));
 }
 function reviewHint(){const R=S.review,st=reviewStatus(R);setRules(R);
   const givens=st.givens||R.digits.map((v,i)=>R.kind[i]==="P"?v:0);
+  if(!st.ok){R.hintState={blocked:true,level:0,steps:["Ik geef pas een hint als de puzzel precies één oplossing heeft. Pas eerst de puzzel aan (zie hieronder)."]};return}
   const h=findHint(givens,R.digits,st.solution);R.hintState=h?Object.assign(h,{level:0}):null}
 function reviewInput(d){const R=S.review;if(R.sel<0)return;R.unsure?.delete(R.sel);R.digits[R.sel]=d;R.kind[R.sel]=d?(R.kind[R.sel]||(R.mode==="hint"?"H":"P")):"";if(R.mode==="hint")reviewHint();renderReview();main.querySelector(`[data-cell="${R.sel}"]`)?.focus({preventScroll:true})}
 function saveDigitized(){
   const R=S.review,t=$("#rTitle"),s=$("#rStars"),d=$("#rDiff");
+  if(!reviewStatus(R).ok){renderReview();return}
   const stars=s&&s.value!==""?Math.max(0,Math.min(20,parseInt(s.value)||0))||null:null;
   const p=normalize({id:uid(),title:(t?.value||R.title).trim()||"Sudoku",stars,difficultyText:(d?.value||"").trim()||(stars?`${stars} sterren`:""),
     source:R.photo?"Gedigitaliseerd van foto op "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long",year:"numeric"}):"Zelf ingevoerd",
     givens:toStr(R.digits.map((v,i)=>R.kind[i]==="P"?v:0)),entries:toStr(R.digits.map((v,i)=>R.kind[i]==="H"?v:0)),thermos:R.thermos||[],cages:R.cages||[]});
   if(p.givens.filter(Boolean).length<17&&!p.thermos.length&&!p.cages.length){R.status={};const m=main.querySelector(".msg");if(m){m.className="msg bad";m.textContent="Vul eerst minstens 17 gedrukte cijfers in, of teken de thermometers als het een thermosudoku is."}return}
+  if(R.editId&&S.puzzles.has(R.editId)){const old=S.puzzles.get(R.editId);
+    Object.assign(p,{id:old.id,created:old.created,seconds:old.seconds,hints:old.hints,source:old.source,solvedAt:null,solution:null,
+      notes:old.notes.map((n,i)=>p.givens[i]?0:n),centers:old.centers.map((n,i)=>p.givens[i]?0:n),colors:old.colors})}
   S.puzzles.set(p.id,p);persist(p,true);S.review=null;photo=null;openPuzzle(p);
+}
+/* Een puzzel uit de verzameling achteraf aanpassen (cijfers, thermometers, kooien). */
+function editPuzzle(p){
+  const digits=p.givens.map((g,i)=>g||p.entries[i]),kind=digits.map((v,i)=>p.givens[i]?"P":v?"H":"");
+  S.review={mode:"digi",editId:p.id,engine:"edit",unsure:new Set(),thermos:(p.thermos||[]).map(t=>t.slice()),cages:(p.cages||[]).map(k=>({sum:k.sum,cells:k.cells.slice()})),
+    digits,kind,stars:p.stars,difficultyText:p.difficultyText,title:p.title,photo:null,hintState:null,sel:-1};
+  closeSheet();S.cur=null;S.view="review";S.sel=-1;render();window.scrollTo(0,0);
 }
 
 /* ---------- instellingen & bevestigingen ---------- */
@@ -1157,6 +1174,7 @@ function openSettings(){
   <div class="setrow"><span>Fotoherkenning<br><span class="notice">${getKey()?(S.settings.freeOcr?"Gratis op dit apparaat (sleutel is ingesteld maar wordt niet gebruikt).":"Claude, met je API-sleutel."):"Gratis op dit apparaat. Met een Claude API-sleutel gaat het nauwkeuriger."}</span></span><button class="btn" type="button" data-act="key">Sleutel</button></div>
   ${getKey()?`<button type="button" class="switchrow" role="switch" aria-checked="${!!S.settings.freeOcr}" data-act="free-ocr"><span>Altijd gratis herkenning<br><span class="notice">Leest foto's op dit apparaat, zonder API-tegoed te gebruiken. Minder nauwkeurig, geen sterren.</span></span><span class="track" aria-hidden="true"><span class="knob"></span></span></button>`:""}
   <div class="setrow"><span>Back-up<br><span class="notice">Zet je puzzels over naar een ander apparaat.</span></span><button class="btn" type="button" data-act="backup">Back-up</button></div>
+  ${S.view==="play"&&S.cur?`<div class="setrow"><span>Deze puzzel aanpassen<br><span class="notice">Cijfers, thermometers of kooien verbeteren.</span></span><button class="btn" type="button" data-act="editpuzzle">Aanpassen</button></div>`:""}
   ${S.view==="play"&&S.cur?`<div class="setrow" style="border:0"><span>Deze puzzel verwijderen uit je verzameling</span><button class="btn danger" type="button" data-act="askdelete">Verwijderen</button></div>`:""}
   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><button class="btn primary" type="button" data-act="close">Klaar</button><span class="notice">Versie ${APP_VERSION}</span></div>`)}
 /* ---------- back-up: puzzels overzetten tussen apparaten ---------- */
@@ -1339,6 +1357,7 @@ document.addEventListener("click",e=>{
     case"todigi":S.review.mode="digi";S.review.digits.forEach((v,i)=>{if(v&&!S.review.kind[i])S.review.kind[i]="P"});renderReview();break;
     case"rkind":{const R=S.review;if(R.sel>=0&&R.digits[R.sel]){R.kind[R.sel]=R.kind[R.sel]==="P"?"H":"P";if(R.mode==="hint")reviewHint();renderReview()}break}
     case"rerase":reviewInput(0);break;
+    case"editpuzzle":if(S.cur)editPuzzle(S.cur);break;
     case"th-start":S.review.drawing=[];renderReview();break;
     case"cg-start":S.review.cageDrawing={cells:[],sum:0};renderReview();break;
     case"cg-back":S.review.cageDrawing?.cells.pop();renderReview();break;
