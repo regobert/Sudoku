@@ -489,14 +489,17 @@ function normalize(p){
   const cages=Array.isArray(p.cages)?p.cages.map(k=>({sum:+k?.sum||0,cells:Array.isArray(k?.cells)?k.cells.map(Number).filter(c=>Number.isInteger(c)&&c>=0&&c<81):[]})).filter(k=>k.sum>0&&k.cells.length):[];
   return{scale:"boek",thermos,cages,variant:cages.length?"killer":thermos.length?"thermo":"classic",id:p.id,title:p.title||"Sudoku",created:p.created||Date.now(),updated:p.updated||Date.now(),stars,difficultyText:p.difficultyText||"",source:p.source||"",
   givens:toArr(p.givens),entries:toArr(p.entries),notes:decodeNotes(p.notes),centers:decodeNotes(p.centers),colors:String(p.colors||"").padEnd(81,"0").slice(0,81).split("").map(Number),
-  seconds:p.seconds||0,solvedAt:p.solvedAt||null,hints:p.hints||0,solution:null}}
+  seconds:p.seconds||0,solvedAt:p.solvedAt||null,hints:p.hints||0,starsAuto:!!p.starsAuto,solution:null}}
 function serialize(p){return{type:"sudoku",scale:"boek",thermos:p.thermos&&p.thermos.length?p.thermos:undefined,cages:p.cages&&p.cages.length?p.cages:undefined,id:p.id,title:p.title,created:p.created,updated:p.updated,stars:p.stars,difficultyText:p.difficultyText,source:p.source,
-  givens:toStr(p.givens),entries:toStr(p.entries),notes:encodeNotes(p.notes),centers:encodeNotes(p.centers),colors:p.colors.join(""),seconds:Math.floor(p.seconds),solvedAt:p.solvedAt,hints:p.hints}}
+  givens:toStr(p.givens),entries:toStr(p.entries),notes:encodeNotes(p.notes),centers:encodeNotes(p.centers),colors:p.colors.join(""),seconds:Math.floor(p.seconds),solvedAt:p.solvedAt,hints:p.hints,starsAuto:p.starsAuto||undefined}}
 function persist(p){p.updated=Date.now();const all=ls.get("sudoku-collection",{});all[p.id]=serialize(p);
   try{localStorage.setItem("sudoku-collection",JSON.stringify(all))}catch{note("Opslaan in deze browser lukte niet. Misschien is de opslag vol of staat privé-browsen aan.",true)}}
 async function removePuzzle(id){S.puzzles.delete(id);const all=ls.get("sudoku-collection",{});delete all[id];ls.set("sudoku-collection",all)}
 function note(t,warn){const n=$("#storeNote");n.textContent=t||"";n.className="notice"+(warn?" warn":"")}
-function loadLocal(){const all=ls.get("sudoku-collection",{});for(const k in all)S.puzzles.set(k,normalize(all[k]))}
+function loadLocal(){const all=ls.get("sudoku-collection",{});for(const k in all)S.puzzles.set(k,normalize(all[k]));
+  /* puzzels zonder sterren krijgen een berekend aantal sterren */
+  let changed=false;for(const p of S.puzzles.values())if(!p.stars){const st=rateStars(p);if(st){p.stars=st;p.starsAuto=true;all[p.id]=serialize(p);changed=true}}
+  setRules(null);if(changed)ls.set("sudoku-collection",all)}
 
 function initRuntime(){note("Je verzameling wordt bewaard in deze browser op dit apparaat.")}
 
@@ -564,8 +567,20 @@ function render(){
   $("#btnTheme").title=dark?"Schuif naar links voor een licht scherm":"Schuif naar rechts voor een donker scherm";
   if(S.view==="home")renderHome();else if(S.view==="list")renderList();else if(S.view==="play")renderPlay();else if(S.view==="review")renderReview();
 }
+/* Sterren berekenen op de schaal van puzzelboeken (geijkt op een 7-sterrenpuzzel: 24 cijfers,
+   niet met alleen 'enige plek/enige cijfer' op te lossen, ongeveer 500 zoekstappen). */
+function rateStars(p){
+  const keepT=THERMOS,keepC=CAGES;setRules(p);
+  const g=(p.givens||[]).slice(),n=g.filter(Boolean).length;let stars=null;
+  try{const r=solve(g,2);
+    if(r.count===1){
+      if(singlesSolve(g)){const extra=THERMOS.length||CAGES.length;stars=extra?(n>=26?3:n>=16?4:5):(n>=36?3:n>=31?4:5)}
+      else{const st=r.steps;stars=st<250?6:st<800?7:st<1500?8:st<2500?9:st<4000?10:st<6000?11:st<9000?12:st<20000?13:14}}}
+  finally{THERMOS=keepT;CAGES=keepC;setThermos(keepT);setCages(keepC)}
+  return stars;
+}
 function starsHTML(p){if(!p.stars&&!p.difficultyText)return"";const lbl=p.stars?`${p.stars} ${p.stars===1?"ster":"sterren"}`:p.difficultyText;
-  return`<span class="stars" title="Moeilijkheid: ${esc(p.difficultyText||lbl)}">${I.star}${p.stars?p.stars:esc(p.difficultyText)}<span class="sr"> ${esc(lbl)}</span></span>`}
+  return`<span class="stars" title="${p.starsAuto?"Door de app berekend: ":"Moeilijkheid: "}${esc(p.difficultyText||lbl)}">${I.star}${p.starsAuto?"≈":""}${p.stars?p.stars:esc(p.difficultyText)}<span class="sr"> ${esc(lbl)}${p.starsAuto?", berekend":""}</span></span>`}
 function progress(p){const empty=p.givens.filter(v=>!v).length;if(!empty)return 1;let f=0;for(let i=0;i<81;i++)if(!p.givens[i]&&p.entries[i])f++;return f/empty}
 function miniHTML(p){let h="";for(let i=0;i<81;i++){const g=p.givens[i],e=p.entries[i];const cls=(COL(i)%3===2&&COL(i)<8?" bR":"")+(ROW(i)%3===2&&ROW(i)<8?" bB":"");h+=`<span class="${g?"":"e"}${cls}">${g||e||""}</span>`}return`<div class="mini" aria-hidden="true">${h}${thermoSVG(p.thermos)}${cageSVG(p.cages,null,false)}</div>`}
 /* ---------- installeren als app ---------- */
@@ -791,6 +806,7 @@ function current(p){return p.givens.map((g,i)=>g||p.entries[i])}
 function openPuzzle(p){
   S.cur=p;S.sel=Math.max(0,p.givens.findIndex(v=>!v));S.undo=[];S.redo=[];S.hint=null;S.msg=null;S.mode="num";S.selSet=null;setRules(p);
   if(!p.solution){const r=solve(p.givens,2);p.solution=r.count===1?r.solution:null;p.unique=r.count}
+  if(!p.stars&&p.unique===1){const st=rateStars(p);setRules(p);if(st){p.stars=st;p.starsAuto=true;if(!p.difficultyText)p.difficultyText="";persist(p,true)}}
   S.view="play";render();startTimer();
 }
 function snapshot(){const p=S.cur;return{e:p.entries.slice(),n:p.notes.slice(),m:p.centers.slice(),c:p.colors.slice()}}
@@ -1017,7 +1033,7 @@ Answer with only JSON in exactly this shape:
 It may also be a killer sudoku: dashed or dotted cages with a small sum printed in a corner of the cage. If so, list every cage as {"sum":23,"cells":[[1,1],[1,2],[2,1]]} with 1-based [row, column]. The small cage sums are not cell digits: do not put them in rows.
 Add "cages":[...] to the JSON. Use "thermos":[] and "cages":[] for an ordinary sudoku.
 Use null for stars, difficultyText or title when there is none. difficultyText is a short Dutch phrase as the user would say it (e.g. "7 sterren", "Moeilijk", "Niveau 3"). If there is no sudoku in the photo, answer {"found":false}. Output only the JSON object, with no other text.`;
-const APP_VERSION="17";
+const APP_VERSION="18";
 /* Welke herkenning? Claude met sleutel, anders (of op verzoek) gratis op het apparaat. */
 const useFreeOCR=()=>!getKey()||!!S.settings.freeOcr||S.freeOnce;
 function loadOCR(){return window.SudokuOCR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="ocr.js?v="+APP_VERSION;sc.onload=()=>res();sc.onerror=()=>rej(new Error("De gratis herkenning kon niet worden geladen. Ben je verbonden met internet?"));document.head.appendChild(sc)})}
@@ -1093,6 +1109,8 @@ function reviewStatus(R){
 }
 function renderReview(){
   const R=S.review,st=reviewStatus(R);
+  if(st.ok){const key=R.digits.map((v,i)=>R.kind[i]==="P"?v:0).join("")+JSON.stringify(R.thermos||[])+JSON.stringify(R.cages||[]);
+    if(R.autoKey!==key){R.autoKey=key;R.autoStars=rateStars({givens:R.digits.map((v,i)=>R.kind[i]==="P"?v:0),thermos:R.thermos,cages:R.cages});setRules(R)}}
   const fake={givens:R.digits.map((v,i)=>R.kind[i]==="P"?v:0),entries:R.digits.map((v,i)=>R.kind[i]==="H"?v:0),notes:Array(81).fill(0),centers:Array(81).fill(0),colors:Array(81).fill(0),solution:null,thermos:R.thermos||[],drawing:R.drawing||null,cages:R.cages||[],cageDrawing:R.cageDrawing||null};
   const cgEditor=R.cageDrawing?`<div class="msg info">Tik de vakjes van de kooi aan en vul de som in. ${R.cageDrawing.cells.length?`${R.cageDrawing.cells.length} vakje${R.cageDrawing.cells.length>1?"s":""} gekozen.`:""}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end"><label class="field" style="width:90px">Som<input id="cageSum" type="number" min="1" max="45" inputmode="numeric" value="${R.cageDrawing.sum||""}"></label><button class="btn primary" type="button" data-act="cg-done">Kooi klaar</button><button class="btn" type="button" data-act="cg-back" ${R.cageDrawing.cells.length?"":"disabled"}>Vakje terug</button><button class="btn ghost" type="button" data-act="cg-cancel">Stoppen</button></div>`
@@ -1115,7 +1133,8 @@ function renderReview(){
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="quickhint">${I.camera}Nieuwe foto, volgende hint</button><button class="btn" type="button" data-act="quickhint-up">${I.upload}Uit fotorol</button><button class="btn" type="button" data-act="todigi">${I.grid}Toch digitaliseren</button></div>`;
   }else{
     side=`<div class="fields"><label class="field">Naam<input id="rTitle" value="${esc(R.title)}"></label>
-      <label class="field">Sterren<input id="rStars" type="number" min="0" max="20" inputmode="numeric" value="${R.stars??""}" placeholder="–"></label></div>
+      <label class="field">Sterren<input id="rStars" type="number" min="0" max="20" inputmode="numeric" value="${R.stars??(st.ok&&R.autoStars?R.autoStars:"")}" placeholder="–"></label></div>
+      ${st.ok&&R.autoStars?`<p class="notice" style="margin:0">${R.stars?`De app schat deze puzzel op ★ ${R.autoStars}${R.stars!==R.autoStars?`; op de foto staat ★ ${R.stars}`:""}.`:`Geen sterren op de foto: de app schat deze puzzel op ★ ${R.autoStars}. Je kunt dit aanpassen.`}</p>`:""}
       <label class="field">Moeilijkheid (zoals op de foto)<input id="rDiff" value="${esc(R.difficultyText)}" placeholder="bijv. 7 sterren of Moeilijk"></label>
       <button class="btn primary" type="button" data-act="savedigi" ${st.ok?"":"disabled"}>${I.check}${R.editId?"Wijzigingen opslaan":"Toevoegen aan verzameling"}</button>
       ${st.ok?"":`<p class="notice" style="margin:0">Opslaan kan zodra de puzzel precies één oplossing heeft.</p>`}`;
@@ -1154,7 +1173,8 @@ function saveDigitized(){
   const R=S.review,t=$("#rTitle"),s=$("#rStars"),d=$("#rDiff");
   if(!reviewStatus(R).ok){renderReview();return}
   const stars=s&&s.value!==""?Math.max(0,Math.min(20,parseInt(s.value)||0))||null:null;
-  const p=normalize({id:uid(),title:(t?.value||R.title).trim()||"Sudoku",stars,difficultyText:(d?.value||"").trim()||(stars?`${stars} sterren`:""),
+  const starsAuto=!!(stars&&!R.stars&&stars===R.autoStars);
+  const p=normalize({id:uid(),title:(t?.value||R.title).trim()||"Sudoku",stars,starsAuto,difficultyText:(d?.value||"").trim()||(stars&&!starsAuto?`${stars} sterren`:""),
     source:R.photo?"Gedigitaliseerd van foto op "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long",year:"numeric"}):"Zelf ingevoerd",
     givens:toStr(R.digits.map((v,i)=>R.kind[i]==="P"?v:0)),entries:toStr(R.digits.map((v,i)=>R.kind[i]==="H"?v:0)),thermos:R.thermos||[],cages:R.cages||[]});
   if(p.givens.filter(Boolean).length<17&&!p.thermos.length&&!p.cages.length){R.status={};const m=main.querySelector(".msg");if(m){m.className="msg bad";m.textContent="Vul eerst minstens 17 gedrukte cijfers in, of teken de thermometers als het een thermosudoku is."}return}
@@ -1167,7 +1187,7 @@ function saveDigitized(){
 function editPuzzle(p){
   const digits=p.givens.map((g,i)=>g||p.entries[i]),kind=digits.map((v,i)=>p.givens[i]?"P":v?"H":"");
   S.review={mode:"digi",editId:p.id,engine:"edit",unsure:new Set(),thermos:(p.thermos||[]).map(t=>t.slice()),cages:(p.cages||[]).map(k=>({sum:k.sum,cells:k.cells.slice()})),
-    digits,kind,stars:p.stars,difficultyText:p.difficultyText,title:p.title,photo:null,hintState:null,sel:-1};
+    digits,kind,stars:p.starsAuto?null:p.stars,difficultyText:p.difficultyText,title:p.title,photo:null,hintState:null,sel:-1};
   closeSheet();S.cur=null;S.view="review";S.sel=-1;render();window.scrollTo(0,0);
 }
 
