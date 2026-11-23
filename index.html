@@ -21,9 +21,9 @@
 :root{
   --bg:#f3f5fa; --paper:#ffffff; --ink:#1c2233; --muted:#5d667c; --line:#c9cfdd; --line-strong:#2a3145;
   --accent:#4a3fc4; --accent-ink:#ffffff; --accent-soft:#e7e4fb;
-  --entry:#2f62d9; --sel:#ffe27a; --peer:#eef0f7; --same:#d9d4fb;
+  --entry:#2f62d9; --sel:#ffe27a; --peer:#eeebfc; --same:#d9d4fb;
   --bad:#d23b4c; --bad-soft:#fde3e6; --good:#1f8a5b; --good-soft:#dcf3e8; --star:#f2a516;
-  --hint:#fff4c4; --hint-cell:#ffd34d; --xbox:#dde1ea; --thermo:#8fb4bd; --thermo-soft:#dcecef; --thermo-ink:#2d6672;
+  --hint:#fff4c4; --hint-cell:#ffd34d; --xbox:#dde1ea; --xbox-peer:#d6d1f0; --thermo:#8fb4bd; --thermo-soft:#dcecef; --thermo-ink:#2d6672;
   --c1:#ffd0d5; --c2:#ffe2b8; --c3:#fff3a8; --c4:#cdeec9; --c5:#c9e3ff; --c6:#e3d3ff;
   --f-display:"Outfit",ui-rounded,"Segoe UI",system-ui,sans-serif;
   --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -32,17 +32,17 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#12141c; --paper:#1b1e29; --ink:#e8eaf2; --muted:#9aa2b8; --line:#353a4c; --line-strong:#a9b0c6;
   --accent:#8d84ff; --accent-ink:#14121f; --accent-soft:#2a2650;
-  --entry:#7fb0ff; --sel:#6b5a12; --peer:#232736; --same:#3b3570;
+  --entry:#7fb0ff; --sel:#6b5a12; --peer:#25233f; --same:#3b3570;
   --bad:#ff6b7a; --bad-soft:#4a1f27; --good:#4fd39a; --good-soft:#173a2b; --star:#ffbf3c;
-  --hint:#3a3415; --hint-cell:#7a6612; --xbox:#2b3042; --thermo:#6f98a3; --thermo-soft:#1e3439; --thermo-ink:#9fd0da;
+  --hint:#3a3415; --hint-cell:#7a6612; --xbox:#2b3042; --xbox-peer:#33305a; --thermo:#6f98a3; --thermo-soft:#1e3439; --thermo-ink:#9fd0da;
   --c1:#5a2a33; --c2:#5a4123; --c3:#55501f; --c4:#24482a; --c5:#1f3c5c; --c6:#3b2d5c;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#12141c; --paper:#1b1e29; --ink:#e8eaf2; --muted:#9aa2b8; --line:#353a4c; --line-strong:#a9b0c6;
   --accent:#8d84ff; --accent-ink:#14121f; --accent-soft:#2a2650;
-  --entry:#7fb0ff; --sel:#6b5a12; --peer:#232736; --same:#3b3570;
+  --entry:#7fb0ff; --sel:#6b5a12; --peer:#25233f; --same:#3b3570;
   --bad:#ff6b7a; --bad-soft:#4a1f27; --good:#4fd39a; --good-soft:#173a2b; --star:#ffbf3c;
-  --hint:#3a3415; --hint-cell:#7a6612; --xbox:#2b3042; --thermo:#6f98a3; --thermo-soft:#1e3439; --thermo-ink:#9fd0da;
+  --hint:#3a3415; --hint-cell:#7a6612; --xbox:#2b3042; --xbox-peer:#33305a; --thermo:#6f98a3; --thermo-soft:#1e3439; --thermo-ink:#9fd0da;
   --c1:#5a2a33; --c2:#5a4123; --c3:#55501f; --c4:#24482a; --c5:#1f3c5c; --c6:#3b2d5c;
   color-scheme:dark}
 *{box-sizing:border-box}
@@ -233,6 +233,7 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .pill.nrc{background:var(--xbox);color:var(--ink)}
 .cell.k1{background:var(--c1)}.cell.k2{background:var(--c2)}.cell.k3{background:var(--c3)}.cell.k4{background:var(--c4)}.cell.k5{background:var(--c5)}.cell.k6{background:var(--c6)}
 .cell.peer{background:var(--peer)}
+.cell.xb.peer{background:var(--xbox-peer)}
 .cell.hh{background:var(--hint)}
 .cell.same{background:var(--same)}
 .cell.hc{background:var(--hint-cell)}
@@ -891,7 +892,7 @@ function renderPlay(){
     center:`<button type="button" class="mode" data-mode="center" aria-pressed="${S.mode==="center"}" title="Middencijfers: welke cijfers kunnen hier nog?" aria-label="Middencijfers"><span class="center">12</span></button>`,
     color:`<button type="button" class="mode" data-mode="color" aria-pressed="${S.mode==="color"}" title="Vakjes kleuren" aria-label="Vakjes kleuren">${I.palette}</button>`}[m]);
   const multiN=S.selSet&&S.selSet.size>1?S.selSet.size:0;
-  const help={num:multiN?`${multiN} vakjes geselecteerd: cijfers komen als hoekcijfers in alle vakjes. Kies 12 voor middencijfers. Tik één vakje aan om terug te gaan.`:"Tik een cijfer om het in het vakje te zetten. Veeg over het raster om meerdere vakjes te kiezen.",corner:multiN?`${multiN} vakjes geselecteerd: cijfers komen als hoekcijfers in alle vakjes.`:"Hoekcijfers: zet kleine cijfers in de hoek van de vakjes waar een cijfer nog kan staan. Zo zie je waar het maar op twee plekken kan.",center:multiN?`${multiN} vakjes geselecteerd: cijfers komen als middencijfers in alle vakjes.`:"Middencijfers: zet in het midden de cijfers die in dit vakje nog kunnen. Staat er nog maar één, dan is dat het antwoord.",color:"Kies een kleur voor het gekozen vakje."}[S.mode==="num"&&multiN?"num":S.mode];
+  const help={num:S.sel<0?"Tik een vakje aan. Dubbel tikken op het gele vakje haalt de selectie weg.":multiN?`${multiN} vakjes geselecteerd: cijfers komen als hoekcijfers in alle vakjes. Kies 12 voor middencijfers. Tik één vakje aan om terug te gaan.`:"Tik een cijfer om het in het vakje te zetten. Veeg over het raster om meerdere vakjes te kiezen.",corner:multiN?`${multiN} vakjes geselecteerd: cijfers komen als hoekcijfers in alle vakjes.`:"Hoekcijfers: zet kleine cijfers in de hoek van de vakjes waar een cijfer nog kan staan. Zo zie je waar het maar op twee plekken kan.",center:multiN?`${multiN} vakjes geselecteerd: cijfers komen als middencijfers in alle vakjes.`:"Middencijfers: zet in het midden de cijfers die in dit vakje nog kunnen. Staat er nog maar één, dan is dat het antwoord.",color:"Kies een kleur voor het gekozen vakje."}[S.mode==="num"&&multiN?"num":S.mode];
   let pad="";
   if(S.mode==="color"){
     pad=[0,1,2,3,4,5,6].map(k=>k===0?`<button type="button" class="swatch none" data-color="0">Geen</button>`:`<button type="button" class="swatch cell k${k}" data-color="${k}" aria-label="Kleur ${k}"></button>`).join("");
@@ -1047,7 +1048,7 @@ Answer with only JSON in exactly this shape:
 It may also be a killer sudoku: dashed or dotted cages with a small sum printed in a corner of the cage. If so, list every cage as {"sum":23,"cells":[[1,1],[1,2],[2,1]]} with 1-based [row, column]. The small cage sums are not cell digits: do not put them in rows.
 Add "cages":[...] to the JSON. If four extra 3x3 areas inside the grid are shaded grey (an NRC sudoku / windoku: the areas at rows 2-4 and 6-8, columns 2-4 and 6-8), add "nrc":true, otherwise "nrc":false. Use "thermos":[] and "cages":[] for an ordinary sudoku.
 Use null for stars, difficultyText or title when there is none. difficultyText is a short Dutch phrase as the user would say it (e.g. "7 sterren", "Moeilijk", "Niveau 3"). If there is no sudoku in the photo, answer {"found":false}. Output only the JSON object, with no other text.`;
-const APP_VERSION="19";
+const APP_VERSION="20";
 /* Welke herkenning? Claude met sleutel, anders (of op verzoek) gratis op het apparaat. */
 const useFreeOCR=()=>!getKey()||!!S.settings.freeOcr||S.freeOnce;
 function loadOCR(){return window.SudokuOCR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="ocr.js?v="+APP_VERSION;sc.onload=()=>res();sc.onerror=()=>rej(new Error("De gratis herkenning kon niet worden geladen. Ben je verbonden met internet?"));document.head.appendChild(sc)})}
@@ -1377,6 +1378,8 @@ document.addEventListener("click",e=>{
   if(t.dataset.cell!==undefined&&S.view==="play"&&(e.shiftKey||e.ctrlKey||e.metaKey)){const i=+t.dataset.cell;
     if(!S.selSet||S.selSet.size<2)S.selSet=new Set(S.sel>=0?[S.sel]:[]);
     S.selSet.has(i)&&S.selSet.size>1?S.selSet.delete(i):S.selSet.add(i);S.sel=i;render();return}
+  if(t.dataset.cell!==undefined&&S.view==="play"){const i=+t.dataset.cell,now=Date.now(),lt=S.lastTap;S.lastTap={i,now};
+    if(lt&&lt.i===i&&now-lt.now<400&&!(S.selSet&&S.selSet.size>1)){S.sel=-1;S.selSet=null;S.hint=null;S.lastTap=null;render();return}}
   if(t.dataset.cell!==undefined&&S.view==="play")S.selSet=null;
   if(t.dataset.cell!==undefined){const i=+t.dataset.cell;if(S.view==="review"){S.review.sel=i;renderReview()}else{S.sel=i;render()}main.querySelector(`[data-cell="${i}"]`)?.focus({preventScroll:true});return}
   if(t.dataset.digit){input(+t.dataset.digit);return}
