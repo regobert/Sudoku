@@ -8,6 +8,12 @@ Een web-app om sudoku's te fotograferen, te spelen en te bewaren.
 - **Controleren**: de app controleert je oplossing en viert het met confetti als alles klopt.
 - **Bediening**: cijfers, notities, kleuren, terug/vooruit, wissen, hint, opnieuw beginnen.
 
+## NRC-sudoku
+
+Zoals in de NRC: naast rijen, kolommen en blokken bevatten ook de vier grijze vakken elk de cijfers 1 tot en met 9.
+De app herkent de grijze vakken op een foto (gratis herkenning en Claude); met de schuifknop **NRC-sudoku** in het controlescherm zet je het zelf aan of uit.
+Kies **NRC** bij Nieuwe puzzel of bij het filter **Soort**.
+
 ## Thermosudoku
 
 Een aparte soort puzzel: op elke thermometer worden de cijfers vanaf het bolletje steeds hoger.

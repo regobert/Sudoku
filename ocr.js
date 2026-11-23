@@ -254,6 +254,21 @@
     return thermos;
   }
 
+  /* NRC-sudoku: zijn de vier vakken (rij 2-4/6-8, kolom 2-4/6-8) duidelijk grijzer dan de rest? */
+  function detectNRC(warped) {
+    const g = grayOf(warped, SIZE * SIZE), tone = [];
+    for (let i = 0; i < 81; i++) {
+      const r = Math.floor(i / 9), c = i % 9, vals = [];
+      for (let y = Math.round((r + 0.15) * CELL); y < (r + 0.85) * CELL; y += 2) for (let x = Math.round((c + 0.15) * CELL); x < (c + 0.85) * CELL; x += 2) vals.push(g[y * SIZE + x]);
+      vals.sort((a, b) => a - b); tone.push(vals[Math.floor(vals.length * 0.75)]);   // achtergrond van het vakje (cijfer telt niet mee)
+    }
+    const inNRC = (i) => { const r = Math.floor(i / 9), c = i % 9; return (r >= 1 && r <= 3 || r >= 5 && r <= 7) && (c >= 1 && c <= 3 || c >= 5 && c <= 7); };
+    const a = [], b = []; tone.forEach((t, i) => (inNRC(i) ? a : b).push(t));
+    const med = (v) => v.slice().sort((x, y) => x - y)[Math.floor(v.length / 2)];
+    const diff = med(b) - med(a), share = a.filter((t) => t < med(b) - diff / 2).length / a.length;
+    return diff > 12 && share > 0.8;
+  }
+
   async function readOnce(blob, opts = {}) {
     const onProgress = opts.onProgress || (() => {});
     onProgress("Raster zoeken…", 0.02);
@@ -297,9 +312,10 @@
     }
     const rows = [], krows = [];
     for (let r = 0; r < 9; r++) { rows.push(digits.slice(r * 9, r * 9 + 9).join("")); krows.push(kinds.slice(r * 9, r * 9 + 9).join("")); }
-    let thermos = [];
-    try { thermos = detectThermos(warped); } catch (e) { thermos = []; }
-    return { found: true, rows, kinds: krows, unsure, thermos, filled: filled.length, stars: null, difficultyText: null, title: null, engine: "free" };
+    let thermos = [], nrc = false;
+    try { nrc = detectNRC(warped); } catch (e) { nrc = false; }
+    try { thermos = nrc ? [] : detectThermos(warped); } catch (e) { thermos = []; }
+    return { found: true, rows, kinds: krows, unsure, thermos, nrc, filled: filled.length, stars: null, difficultyText: null, title: null, engine: "free" };
   }
 
   /* Leest de foto; is bijna alles onzeker, dan staat de foto waarschijnlijk scheef

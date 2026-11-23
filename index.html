@@ -23,7 +23,7 @@
   --accent:#4a3fc4; --accent-ink:#ffffff; --accent-soft:#e7e4fb;
   --entry:#2f62d9; --sel:#ffe27a; --peer:#eef0f7; --same:#d9d4fb;
   --bad:#d23b4c; --bad-soft:#fde3e6; --good:#1f8a5b; --good-soft:#dcf3e8; --star:#f2a516;
-  --hint:#fff4c4; --hint-cell:#ffd34d; --thermo:#8fb4bd; --thermo-soft:#dcecef; --thermo-ink:#2d6672;
+  --hint:#fff4c4; --hint-cell:#ffd34d; --xbox:#dde1ea; --thermo:#8fb4bd; --thermo-soft:#dcecef; --thermo-ink:#2d6672;
   --c1:#ffd0d5; --c2:#ffe2b8; --c3:#fff3a8; --c4:#cdeec9; --c5:#c9e3ff; --c6:#e3d3ff;
   --f-display:"Outfit",ui-rounded,"Segoe UI",system-ui,sans-serif;
   --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -34,7 +34,7 @@
   --accent:#8d84ff; --accent-ink:#14121f; --accent-soft:#2a2650;
   --entry:#7fb0ff; --sel:#6b5a12; --peer:#232736; --same:#3b3570;
   --bad:#ff6b7a; --bad-soft:#4a1f27; --good:#4fd39a; --good-soft:#173a2b; --star:#ffbf3c;
-  --hint:#3a3415; --hint-cell:#7a6612; --thermo:#6f98a3; --thermo-soft:#1e3439; --thermo-ink:#9fd0da;
+  --hint:#3a3415; --hint-cell:#7a6612; --xbox:#2b3042; --thermo:#6f98a3; --thermo-soft:#1e3439; --thermo-ink:#9fd0da;
   --c1:#5a2a33; --c2:#5a4123; --c3:#55501f; --c4:#24482a; --c5:#1f3c5c; --c6:#3b2d5c;
   color-scheme:dark}}
 :root[data-theme="dark"]{
@@ -42,7 +42,7 @@
   --accent:#8d84ff; --accent-ink:#14121f; --accent-soft:#2a2650;
   --entry:#7fb0ff; --sel:#6b5a12; --peer:#232736; --same:#3b3570;
   --bad:#ff6b7a; --bad-soft:#4a1f27; --good:#4fd39a; --good-soft:#173a2b; --star:#ffbf3c;
-  --hint:#3a3415; --hint-cell:#7a6612; --thermo:#6f98a3; --thermo-soft:#1e3439; --thermo-ink:#9fd0da;
+  --hint:#3a3415; --hint-cell:#7a6612; --xbox:#2b3042; --thermo:#6f98a3; --thermo-soft:#1e3439; --thermo-ink:#9fd0da;
   --c1:#5a2a33; --c2:#5a4123; --c3:#55501f; --c4:#24482a; --c5:#1f3c5c; --c6:#3b2d5c;
   color-scheme:dark}
 *{box-sizing:border-box}
@@ -228,6 +228,9 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block
 .board{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));aspect-ratio:1;max-width:100%;border:3px solid var(--line-strong);border-radius:6px;overflow:hidden;background:var(--paper);user-select:none;touch-action:manipulation}
 .cell{position:relative;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--paper);padding:0;display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-size:6.4cqw;font-weight:500;font-variant-numeric:tabular-nums;line-height:1;min-width:0;min-height:0;overflow:hidden}
 .cell.bR{border-right:2.5px solid var(--line-strong)} .cell.bB{border-bottom:2.5px solid var(--line-strong)}
+.cell.xb{background:var(--xbox)}
+.mini span.x{background:var(--xbox)}
+.pill.nrc{background:var(--xbox);color:var(--ink)}
 .cell.k1{background:var(--c1)}.cell.k2{background:var(--c2)}.cell.k3{background:var(--c3)}.cell.k4{background:var(--c4)}.cell.k5{background:var(--c5)}.cell.k6{background:var(--c6)}
 .cell.peer{background:var(--peer)}
 .cell.hh{background:var(--hint)}
@@ -385,11 +388,17 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
 /* ---------- sudoku-logica ---------- */
 const ROW=i=>Math.floor(i/9),COL=i=>i%9,BOX=i=>Math.floor(ROW(i)/3)*3+Math.floor(COL(i)/3);
-const HOUSES=[];
+let HOUSES=[];
 for(let r=0;r<9;r++)HOUSES.push({type:"rij",n:r,cells:[...Array(9)].map((_,c)=>r*9+c)});
 for(let c=0;c<9;c++)HOUSES.push({type:"kolom",n:c,cells:[...Array(9)].map((_,r)=>r*9+c)});
 for(let b=0;b<9;b++){const br=Math.floor(b/3)*3,bc=b%3*3,cells=[];for(let a=0;a<3;a++)for(let d=0;d<3;d++)cells.push((br+a)*9+bc+d);HOUSES.push({type:"blok",n:b,cells})}
-const PEERS=[...Array(81)].map((_,i)=>{const s=new Set();HOUSES.forEach(h=>{if(h.cells.includes(i))h.cells.forEach(j=>j!==i&&s.add(j))});return[...s]});
+const PEERS_STD=[...Array(81)].map((_,i)=>{const s=new Set();HOUSES.forEach(h=>{if(h.cells.includes(i))h.cells.forEach(j=>j!==i&&s.add(j))});return[...s]});
+/* NRC-sudoku: vier extra grijze 3x3-vakken die ook elk 1 t/m 9 bevatten. */
+const NRC_CELLS=new Set(),HOUSES_STD=HOUSES.slice();
+const NRC_HOUSES=[[1,1],[1,5],[5,1],[5,5]].map(([r0,c0],n)=>{const cells=[];for(let r=r0;r<r0+3;r++)for(let c=c0;c<c0+3;c++){cells.push(r*9+c);NRC_CELLS.add(r*9+c)}return{type:"grijs",n,cells}});
+const PEERS_NRC=PEERS_STD.map((ps,i)=>{const s2=new Set(ps);NRC_HOUSES.forEach(h=>{if(h.cells.includes(i))h.cells.forEach(j=>j!==i&&s2.add(j))});return[...s2]});
+let PEERS=PEERS_STD,NRC=false;
+function setNRC(on){NRC=!!on;HOUSES=NRC?HOUSES_STD.concat(NRC_HOUSES):HOUSES_STD;PEERS=NRC?PEERS_NRC:PEERS_STD}
 const bits=m=>{const o=[];for(let d=1;d<=9;d++)if(m&(1<<d))o.push(d);return o};
 const pop=m=>{let c=0;while(m){m&=m-1;c++}return c};
 /* Thermosudoku: op elke thermometer stijgen de cijfers vanaf het bolletje (eerste vakje).
@@ -405,7 +414,7 @@ function thermoMask(g,i){const es=THPOS.get(i);if(!es)return 0b1111111110;let m=
 /* Killer sudoku: kooien met een som; binnen een kooi geen dubbele cijfers. */
 let CAGES=[],CAGEOF=new Map();
 function setCages(c){CAGES=Array.isArray(c)?c.filter(k=>k&&Array.isArray(k.cells)&&k.cells.length&&k.sum>0):[];CAGEOF=new Map();CAGES.forEach(k=>k.cells.forEach(i=>CAGEOF.set(i,k)))}
-function setRules(p){setThermos(p&&p.thermos);setCages(p&&p.cages)}
+function setRules(p){setThermos(p&&p.thermos);setCages(p&&p.cages);setNRC(p&&p.nrc)}
 const FEAS=new Map();
 /* Kun je 'count' verschillende cijfers uit 'pool' kiezen die samen 'target' zijn? */
 function feasible(pool,count,target){
@@ -442,7 +451,7 @@ function solve(g0,limit=2){
   return{count,solution,second,steps};
 }
 const BOXNAME=["linksboven","middenboven","rechtsboven","links in het midden","in het midden","rechts in het midden","linksonder","middenonder","rechtsonder"];
-const houseLabel=h=>h.type==="blok"?`het blok ${BOXNAME[h.n]}`:`${h.type} ${h.n+1}`;
+const houseLabel=h=>h.type==="blok"?`het blok ${BOXNAME[h.n]}`:h.type==="grijs"?`het grijze vak ${["linksboven","rechtsboven","linksonder","rechtsonder"][h.n]}`:`${h.type} ${h.n+1}`;
 const cellLabel=i=>`rij ${ROW(i)+1}, kolom ${COL(i)+1}`;
 /* Geeft een hint in 3 niveaus: waar kijken, welk vakje, welk cijfer. */
 function findHint(givens,current,solution){const h=findHintCore(givens,current,solution);
@@ -457,7 +466,7 @@ function findHintCore(givens,current,solution){
   if(solution){const wrong=current.findIndex((v,i)=>v&&!givens[i]&&v!==solution[i]);
     if(wrong>=0){const h=HOUSES[ROW(wrong)];return{house:h.cells,cell:wrong,error:true,steps:[`Er zit een fout in je puzzel, ergens in rij ${ROW(wrong)+1}.`,`Kijk nog eens naar ${cellLabel(wrong)}.`,`Hier hoort een ${solution[wrong]}, niet een ${current[wrong]}.`]}}}
   const C=cands(current);
-  for(const order of["blok","rij","kolom"])for(const h of HOUSES.filter(x=>x.type===order)){
+  for(const order of["blok","grijs","rij","kolom"])for(const h of HOUSES.filter(x=>x.type===order)){
     for(let d=1;d<=9;d++){if(h.cells.some(i=>current[i]===d))continue;const pos=h.cells.filter(i=>!current[i]&&C[i]&(1<<d));
       if(pos.length===1)return{house:h.cells,cell:pos[0],digit:d,steps:[`Kijk eens naar ${houseLabel(h)}. Het cijfer ${d} kan daar maar op één plek.`,`Het gaat om ${cellLabel(pos[0])}. Waarom kan de ${d} nergens anders in ${houseLabel(h)}?`,`Hier hoort een ${d}.`]}}}
   for(let i=0;i<81;i++)if(!current[i]&&pop(C[i])===1){const d=bits(C[i])[0],h=HOUSES[18+BOX(i)];
@@ -487,10 +496,10 @@ function normalize(p){
   if(p.source==="Gemaakt door de app"&&!p.scale&&stars&&OLD_APP_STARS[stars])stars=OLD_APP_STARS[stars];
   const thermos=Array.isArray(p.thermos)?p.thermos.map(t=>Array.isArray(t)?t.map(Number).filter(c=>Number.isInteger(c)&&c>=0&&c<81):[]).filter(t=>t.length>=2):[];
   const cages=Array.isArray(p.cages)?p.cages.map(k=>({sum:+k?.sum||0,cells:Array.isArray(k?.cells)?k.cells.map(Number).filter(c=>Number.isInteger(c)&&c>=0&&c<81):[]})).filter(k=>k.sum>0&&k.cells.length):[];
-  return{scale:"boek",thermos,cages,variant:cages.length?"killer":thermos.length?"thermo":"classic",id:p.id,title:p.title||"Sudoku",created:p.created||Date.now(),updated:p.updated||Date.now(),stars,difficultyText:p.difficultyText||"",source:p.source||"",
+  return{scale:"boek",thermos,cages,nrc:!!p.nrc,variant:cages.length?"killer":thermos.length?"thermo":p.nrc?"nrc":"classic",id:p.id,title:p.title||"Sudoku",created:p.created||Date.now(),updated:p.updated||Date.now(),stars,difficultyText:p.difficultyText||"",source:p.source||"",
   givens:toArr(p.givens),entries:toArr(p.entries),notes:decodeNotes(p.notes),centers:decodeNotes(p.centers),colors:String(p.colors||"").padEnd(81,"0").slice(0,81).split("").map(Number),
   seconds:p.seconds||0,solvedAt:p.solvedAt||null,hints:p.hints||0,starsAuto:!!p.starsAuto,solution:null}}
-function serialize(p){return{type:"sudoku",scale:"boek",thermos:p.thermos&&p.thermos.length?p.thermos:undefined,cages:p.cages&&p.cages.length?p.cages:undefined,id:p.id,title:p.title,created:p.created,updated:p.updated,stars:p.stars,difficultyText:p.difficultyText,source:p.source,
+function serialize(p){return{type:"sudoku",scale:"boek",thermos:p.thermos&&p.thermos.length?p.thermos:undefined,cages:p.cages&&p.cages.length?p.cages:undefined,nrc:p.nrc||undefined,id:p.id,title:p.title,created:p.created,updated:p.updated,stars:p.stars,difficultyText:p.difficultyText,source:p.source,
   givens:toStr(p.givens),entries:toStr(p.entries),notes:encodeNotes(p.notes),centers:encodeNotes(p.centers),colors:p.colors.join(""),seconds:Math.floor(p.seconds),solvedAt:p.solvedAt,hints:p.hints,starsAuto:p.starsAuto||undefined}}
 function persist(p){p.updated=Date.now();const all=ls.get("sudoku-collection",{});all[p.id]=serialize(p);
   try{localStorage.setItem("sudoku-collection",JSON.stringify(all))}catch{note("Opslaan in deze browser lukte niet. Misschien is de opslag vol of staat privé-browsen aan.",true)}}
@@ -570,19 +579,19 @@ function render(){
 /* Sterren berekenen op de schaal van puzzelboeken (geijkt op een 7-sterrenpuzzel: 24 cijfers,
    niet met alleen 'enige plek/enige cijfer' op te lossen, ongeveer 500 zoekstappen). */
 function rateStars(p){
-  const keepT=THERMOS,keepC=CAGES;setRules(p);
+  const keepT=THERMOS,keepC=CAGES,keepN=NRC;setRules(p);
   const g=(p.givens||[]).slice(),n=g.filter(Boolean).length;let stars=null;
   try{const r=solve(g,2);
     if(r.count===1){
-      if(singlesSolve(g)){const extra=THERMOS.length||CAGES.length;stars=extra?(n>=26?3:n>=16?4:5):(n>=36?3:n>=31?4:5)}
+      if(singlesSolve(g)){const extra=THERMOS.length||CAGES.length||NRC;stars=extra?(n>=26?3:n>=16?4:5):(n>=36?3:n>=31?4:5)}
       else{const st=r.steps;stars=st<250?6:st<800?7:st<1500?8:st<2500?9:st<4000?10:st<6000?11:st<9000?12:st<20000?13:14}}}
-  finally{THERMOS=keepT;CAGES=keepC;setThermos(keepT);setCages(keepC)}
+  finally{setThermos(keepT);setCages(keepC);setNRC(keepN)}
   return stars;
 }
 function starsHTML(p){if(!p.stars&&!p.difficultyText)return"";const lbl=p.stars?`${p.stars} ${p.stars===1?"ster":"sterren"}`:p.difficultyText;
   return`<span class="stars" title="${p.starsAuto?"Door de app berekend: ":"Moeilijkheid: "}${esc(p.difficultyText||lbl)}">${I.star}${p.starsAuto?"≈":""}${p.stars?p.stars:esc(p.difficultyText)}<span class="sr"> ${esc(lbl)}${p.starsAuto?", berekend":""}</span></span>`}
 function progress(p){const empty=p.givens.filter(v=>!v).length;if(!empty)return 1;let f=0;for(let i=0;i<81;i++)if(!p.givens[i]&&p.entries[i])f++;return f/empty}
-function miniHTML(p){let h="";for(let i=0;i<81;i++){const g=p.givens[i],e=p.entries[i];const cls=(COL(i)%3===2&&COL(i)<8?" bR":"")+(ROW(i)%3===2&&ROW(i)<8?" bB":"");h+=`<span class="${g?"":"e"}${cls}">${g||e||""}</span>`}return`<div class="mini" aria-hidden="true">${h}${thermoSVG(p.thermos)}${cageSVG(p.cages,null,false)}</div>`}
+function miniHTML(p){let h="";for(let i=0;i<81;i++){const g=p.givens[i],e=p.entries[i];const cls=(COL(i)%3===2&&COL(i)<8?" bR":"")+(ROW(i)%3===2&&ROW(i)<8?" bB":"");h+=`<span class="${g?"":"e"}${cls}${p.nrc&&NRC_CELLS.has(i)?" x":""}">${g||e||""}</span>`}return`<div class="mini" aria-hidden="true">${h}${thermoSVG(p.thermos)}${cageSVG(p.cages,null,false)}</div>`}
 /* ---------- installeren als app ---------- */
 let installEvt=null;
 const isStandalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
@@ -659,6 +668,7 @@ function makeCages(sol,maxSize){
   return cages;
 }
 function carve(level){
+  setNRC(!!level.nrc);
   const sol=fullGrid(),g=sol.slice();
   if(level.thermo)setThermos(makeThermos(sol));else setThermos([]);
   if(level.killer)setCages(makeCages(sol,level.maxCage||4));else setCages([]);
@@ -687,17 +697,18 @@ function makePuzzle(level){
 }
 function newPuzzle(key,btn){
   const base=LEVELS.find(l=>l.key===key);if(!base)return;
-  const thermo=S.newVariant==="thermo",killer=S.newVariant==="killer";
+  const thermo=S.newVariant==="thermo",killer=S.newVariant==="killer",nrc=S.newVariant==="nrc";
   /* Thermometers en kooien geven extra informatie, dus minder gegeven cijfers.
      Killer: makkelijk = kleine kooien en wat cijfers, moeilijk = grotere kooien en geen cijfers. */
   const level=thermo?{...base,thermo:true,givens:base.givens?base.givens-8:0}
+    :nrc?{...base,nrc:true,givens:base.givens?base.givens-6:0}
     :killer?{...base,killer:true,maxCage:base.stars<=3?2:base.stars<=7?3:base.stars<=9?4:5,givens:base.givens?Math.max(1,base.givens-26):0,tries:Math.min(base.tries||1,base.stars>=11?8:4)}:base;
   if(btn){btn.setAttribute("aria-busy","true");btn.querySelector(".d").textContent=level.stars>=9?"Puzzel maken… dit kan een paar seconden duren.":"Puzzel maken…"}
   setTimeout(()=>{
     const {g,thermos,cages}=makePuzzle(level);
-    const name=(thermo?"Thermo ":killer?"Killer ":"")+level.name;
+    const name=(thermo?"Thermo ":killer?"Killer ":nrc?"NRC ":"")+level.name;
     const n=[...S.puzzles.values()].filter(p=>p.source==="Gemaakt door de app"&&p.title.startsWith(name+" ")).length+1;
-    const p=normalize({scale:"boek",id:uid(),title:`${name} ${n}`,stars:level.stars,difficultyText:level.name,source:"Gemaakt door de app",givens:toStr(g),thermos,cages});
+    const p=normalize({scale:"boek",id:uid(),title:`${name} ${n}`,stars:level.stars,difficultyText:level.name,source:"Gemaakt door de app",givens:toStr(g),thermos,cages,nrc});
     S.puzzles.set(p.id,p);persist(p,true);openPuzzle(p);window.scrollTo(0,0);
   },30);
 }
@@ -722,7 +733,8 @@ function renderHome(){
     <p class="notice" style="grid-column:1 / -1;margin:0">Wil je de puzzel bewaren of hier verder spelen? <button class="linkbtn" type="button" data-act="camera">Foto maken</button> of <button class="linkbtn" type="button" data-act="upload">foto uploaden</button> en kies Digitaliseren.</p></section>`;
   h=h.replace('</p></div>','</p></div>'+installCard()+photoHero);
   const nv=S.newVariant||"classic";
-  h+=`<section><div class="sec-title"><h3>Nieuwe puzzel</h3><div class="tabs" role="group" aria-label="Soort puzzel"><button class="chip" type="button" data-newvar="classic" aria-pressed="${nv==="classic"}">Klassiek</button><button class="chip" type="button" data-newvar="thermo" aria-pressed="${nv==="thermo"}">Thermo</button><button class="chip" type="button" data-newvar="killer" aria-pressed="${nv==="killer"}">Killer</button></div></div>
+  h+=`<section><div class="sec-title"><h3>Nieuwe puzzel</h3><div class="tabs" role="group" aria-label="Soort puzzel"><button class="chip" type="button" data-newvar="classic" aria-pressed="${nv==="classic"}">Klassiek</button><button class="chip" type="button" data-newvar="nrc" aria-pressed="${nv==="nrc"}">NRC</button><button class="chip" type="button" data-newvar="thermo" aria-pressed="${nv==="thermo"}">Thermo</button><button class="chip" type="button" data-newvar="killer" aria-pressed="${nv==="killer"}">Killer</button></div></div>
+    ${nv==="nrc"?`<p class="rules" style="margin:-4px 0 10px">NRC-sudoku: ook de vier grijze vakken bevatten elk de cijfers 1 tot en met 9, zoals in de NRC.</p>`:""}
     ${nv==="killer"?`<p class="rules" style="margin:-4px 0 10px">Killer sudoku: de cijfers in elke stippel-kooi tellen op tot het getal linksboven, en binnen een kooi komt geen cijfer dubbel voor.</p>`:""}
     ${nv==="thermo"?`<p class="rules" style="margin:-4px 0 10px">Thermosudoku: op elke thermometer worden de cijfers vanaf het bolletje steeds hoger. <button class="linkbtn" type="button" data-open="voorbeeld-thermo" data-example="thermo">Probeer het voorbeeld uit je app</button></p>`:""}<div class="levels">${LEVELS.map(l=>`<button class="level" type="button" data-level="${l.key}"><span class="lvstars">${I.star}${l.stars}<span class="sr"> sterren</span></span><b>${l.name}</b><span class="d">${l.desc}</span></button>`).join("")}</div></section>
     <p class="notice" style="margin-top:-14px">Geen foto bij de hand? <button class="linkbtn" type="button" data-act="manual">Typ een puzzel zelf over</button></p>`;
@@ -744,12 +756,12 @@ const diffLabel=k=>{const r=RANGES.find(r=>r.k===k);return r?`${rangeStars(r)} s
 const diffChipLabel=k=>{const r=RANGES.find(r=>r.k===k);return r?`<span class="stars">${I.star}${rangeStars(r)}</span>`:"Zonder niveau"};
 function sortByDiff(a,b){const x=a.stars||99,y=b.stars||99;return x-y||b.updated-a.updated}
 function saveView(){ls.set("sudoku-view",{diff:S.diff,filter:S.filter,sort:S.sort,kind:S.kind,newVariant:S.newVariant})}
-const KIND_LABEL={classic:"Klassiek",thermo:"Thermo",killer:"Killer"};
+const KIND_LABEL={classic:"Klassiek",nrc:"NRC",thermo:"Thermo",killer:"Killer"};
 function filterBar(all,{status=true,sort=true}={}){
   const kinds=[...new Set(all.map(p=>p.variant||"classic"))];
   if(S.kind!=="all"&&!kinds.includes(S.kind))S.kind="all";
   const kchip=k=>`<button class="chip" type="button" data-kind="${k}" aria-pressed="${S.kind===k}">${k==="all"?"Alle":KIND_LABEL[k]}<span class="cnt">${all.filter(p=>k==="all"||(p.variant||"classic")===k).length}</span></button>`;
-  const kindRow=kinds.some(k=>k!=="classic")?`<div class="tabs" role="group" aria-label="Soort"><span class="lbl">Soort</span>${["all","classic","thermo","killer"].filter(k=>k==="all"||kinds.includes(k)).map(kchip).join("")}</div>`:"";
+  const kindRow=kinds.some(k=>k!=="classic")?`<div class="tabs" role="group" aria-label="Soort"><span class="lbl">Soort</span>${["all","classic","nrc","thermo","killer"].filter(k=>k==="all"||kinds.includes(k)).map(kchip).join("")}</div>`:"";
   const keys=[...new Set(all.map(diffKey))].sort((a,b)=>RANGE_ORDER.indexOf(a)-RANGE_ORDER.indexOf(b));
   if(S.diff!=="all"&&!keys.includes(S.diff))S.diff="all";
   const cnt=k=>all.filter(p=>k==="all"||diffKey(p)===k).length;
@@ -796,7 +808,7 @@ function cardHTML(p,example){
   return`<button class="card" type="button" data-open="${esc(p.id)}" ${example?'data-example="1"':""}>
     ${example?'<span class="example-tag">Voorbeeld</span>':""}
     ${miniHTML(p)}
-    <div class="meta"><h3>${esc(p.title)}</h3>${starsHTML(p)}${p.thermos&&p.thermos.length?'<span class="pill thermo">Thermo</span>':""}${p.cages&&p.cages.length?'<span class="pill killer">Killer</span>':""}</div>
+    <div class="meta"><h3>${esc(p.title)}</h3>${starsHTML(p)}${p.thermos&&p.thermos.length?'<span class="pill thermo">Thermo</span>':""}${p.cages&&p.cages.length?'<span class="pill killer">Killer</span>':""}${p.nrc?'<span class="pill nrc">NRC</span>':""}</div>
     ${p.solvedAt?"":`<div class="bar" aria-hidden="true"><i style="width:${pr*100}%"></i></div>`}
     <div class="row">${st}<span>${p.solvedAt?fmtTime(p.seconds):example?esc(p.source):date}</span></div></button>`;
 }
@@ -815,6 +827,7 @@ function restore(s){const p=S.cur;p.entries=s.e;p.notes=s.n;p.centers=s.m;p.colo
 function cellClasses(p,i,cur,C){
   const sel=S.sel,cls=["cell"];
   if(COL(i)%3===2&&COL(i)<8)cls.push("bR");if(ROW(i)%3===2&&ROW(i)<8)cls.push("bB");
+  if(p.nrc&&NRC_CELLS.has(i))cls.push("xb");
   if(p.colors[i])cls.push("k"+p.colors[i]);
   if(S.hint){if(S.hint.house?.includes(i))cls.push("hh");if(S.hint.level>=1&&S.hint.cell===i)cls.push("hc")}
   const multi=S.view==="play"&&S.selSet&&S.selSet.size>1;
@@ -867,7 +880,7 @@ function boardHTML(p,cur,editable=true){
     const lbl=`${cellLabel(i)}${cur[i]?": "+cur[i]:": leeg"}${p.givens[i]?" (gegeven)":""}${!cur[i]&&p.notes?.[i]?", hoekcijfers "+bits(p.notes[i]).join(" "):""}${!cur[i]&&p.centers?.[i]?", middencijfers "+bits(p.centers[i]).join(" "):""}`;
     h+=`<button type="button" class="${cellClasses(p,i,cur,C)}" data-cell="${i}" aria-label="${lbl}" tabindex="${i===Math.max(0,S.sel)?0:-1}">${inner}</button>`;
   }
-  return`<div class="boardbox"><div class="board${p.cages&&p.cages.length||p.cageDrawing?" killer":""}${S.view==="play"?" playing":""}" role="grid" aria-label="${p.cages&&p.cages.length?"Killer sudoku-raster":p.thermos&&p.thermos.length?"Thermosudoku-raster":"Sudoku-raster"}" id="board">${h}${thermoSVG(p.thermos,p.drawing)}${cageSVG(p.cages,p.cageDrawing)}</div></div>`;
+  return`<div class="boardbox"><div class="board${p.cages&&p.cages.length||p.cageDrawing?" killer":""}${S.view==="play"?" playing":""}" role="grid" aria-label="${p.nrc?"NRC-sudoku-raster":p.cages&&p.cages.length?"Killer sudoku-raster":p.thermos&&p.thermos.length?"Thermosudoku-raster":"Sudoku-raster"}" id="board">${h}${thermoSVG(p.thermos,p.drawing)}${cageSVG(p.cages,p.cageDrawing)}</div></div>`;
 }
 function renderPlay(){
   const p=S.cur,cur=current(p);
@@ -904,6 +917,7 @@ function renderPlay(){
       ${boardHTML(p,cur)}
       ${uniq}
       ${p.thermos&&p.thermos.length?`<p class="rules">Thermosudoku: op elke thermometer worden de cijfers vanaf het bolletje steeds hoger.</p>`:""}
+      ${p.nrc?`<p class="rules">NRC-sudoku: ook de vier grijze vakken bevatten elk de cijfers 1 tot en met 9.</p>`:""}
       ${p.cages&&p.cages.length?`<p class="rules">Killer sudoku: de cijfers in elke kooi tellen op tot het getal linksboven; binnen een kooi geen dubbele cijfers.</p>`:""}
       ${p.source?`<p class="notice">${esc(p.source)}${p.hints?` · ${p.hints} hint${p.hints>1?"s":""} gebruikt`:""}</p>`:""}
     </section>
@@ -1031,9 +1045,9 @@ This may be a thermo sudoku: grey or coloured thermometer shapes drawn over the 
 Answer with only JSON in exactly this shape:
 {"found":true,"rows":["392......", ... 9 strings of 9 characters],"kinds":["PPP......", ... 9 strings, P/H/. matching rows],"stars":7,"difficultyText":"7 sterren","title":"49","thermos":[[[3,2],[3,3],[3,4]], ...]}
 It may also be a killer sudoku: dashed or dotted cages with a small sum printed in a corner of the cage. If so, list every cage as {"sum":23,"cells":[[1,1],[1,2],[2,1]]} with 1-based [row, column]. The small cage sums are not cell digits: do not put them in rows.
-Add "cages":[...] to the JSON. Use "thermos":[] and "cages":[] for an ordinary sudoku.
+Add "cages":[...] to the JSON. If four extra 3x3 areas inside the grid are shaded grey (an NRC sudoku / windoku: the areas at rows 2-4 and 6-8, columns 2-4 and 6-8), add "nrc":true, otherwise "nrc":false. Use "thermos":[] and "cages":[] for an ordinary sudoku.
 Use null for stars, difficultyText or title when there is none. difficultyText is a short Dutch phrase as the user would say it (e.g. "7 sterren", "Moeilijk", "Niveau 3"). If there is no sudoku in the photo, answer {"found":false}. Output only the JSON object, with no other text.`;
-const APP_VERSION="18";
+const APP_VERSION="19";
 /* Welke herkenning? Claude met sleutel, anders (of op verzoek) gratis op het apparaat. */
 const useFreeOCR=()=>!getKey()||!!S.settings.freeOcr||S.freeOnce;
 function loadOCR(){return window.SudokuOCR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement("script");sc.src="ocr.js?v="+APP_VERSION;sc.onload=()=>res();sc.onerror=()=>rej(new Error("De gratis herkenning kon niet worden geladen. Ben je verbonden met internet?"));document.head.appendChild(sc)})}
@@ -1055,7 +1069,8 @@ async function readPhoto(mode){
     const thermos=(Array.isArray(r.thermos)?r.thermos:[]).map(t=>Array.isArray(t)?t.map(c=>Array.isArray(c)?(+c[0]-1)*9+(+c[1]-1):-1).filter(i=>Number.isInteger(i)&&i>=0&&i<81):[]).filter(t=>t.length>=2);
     const cages=(Array.isArray(r.cages)?r.cages:[]).map(k=>({sum:Math.round(+k?.sum||0),cells:(Array.isArray(k?.cells)?k.cells:[]).map(c=>Array.isArray(c)?(+c[0]-1)*9+(+c[1]-1):-1).filter(i=>Number.isInteger(i)&&i>=0&&i<81)})).filter(k=>k.sum>0&&k.sum<=45&&k.cells.length);
     if(!thermos.length){try{await loadOCR();const found=await SudokuOCR.findThermos(photo.blob);if(found.length){thermos.push(...found);var autoTh=found.length}}catch(e){}}
-    S.review={mode,engine:"claude",autoThermos:typeof autoTh==="number"?autoTh:0,cages,unsure:new Set(),thermos,digits,kind,stars,difficultyText:r.difficultyText?String(r.difficultyText).slice(0,40):(stars?`${stars} sterren`:""),
+    const nrcFlag=r.nrc===true;
+    S.review={mode,engine:"claude",nrc:nrcFlag,autoNrc:nrcFlag,autoThermos:typeof autoTh==="number"?autoTh:0,cages,unsure:new Set(),thermos,digits,kind,stars,difficultyText:r.difficultyText?String(r.difficultyText).slice(0,40):(stars?`${stars} sterren`:""),
       title:r.title?(/^\d+$/.test(String(r.title))?"Sudoku "+r.title:String(r.title).slice(0,40)):"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),
       photo:photo.url,hintState:null,sel:-1};
     closeSheet();S.view="review";S.sel=-1;render();window.scrollTo(0,0);
@@ -1080,7 +1095,7 @@ async function readPhotoFree(mode){
     if(stop)return;
     if(!r.found){sheet(`<h2>Geen raster gevonden</h2><p>De gratis herkenning vindt geen sudoku-raster op deze foto. Maak de foto recht van boven, met het hele raster goed in beeld en zonder schaduw.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="${mode==="hint"?"quickhint":"camera"}">${I.camera}Nieuwe foto</button><button class="btn" type="button" data-act="${mode==="hint"?"quickhint-up":"upload"}">${I.upload}Uit fotorol</button><button class="btn" type="button" data-act="manual">Zelf overtypen</button><button class="btn ghost" type="button" data-act="close">Sluiten</button></div>`);return}
     const digits=toArr(r.rows.join("")),kinds=r.kinds.join(""),kind=digits.map((v,i)=>v?(kinds[i]==="H"?"H":"P"):"");
-    S.review={mode,engine:"free",unsure:new Set(r.unsure),thermos:Array.isArray(r.thermos)?r.thermos:[],autoThermos:(r.thermos||[]).length,cages:[],digits,kind,stars:null,difficultyText:"",
+    S.review={mode,engine:"free",nrc:!!r.nrc,autoNrc:!!r.nrc,unsure:new Set(r.unsure),thermos:Array.isArray(r.thermos)?r.thermos:[],autoThermos:(r.thermos||[]).length,cages:[],digits,kind,stars:null,difficultyText:"",
       title:"Sudoku van "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long"}),photo:photo.url,hintState:null,sel:-1};
     closeSheet();S.view="review";S.sel=-1;render();if(mode==="hint"){reviewHint();renderReview()}window.scrollTo(0,0);
   }catch(e){
@@ -1093,7 +1108,7 @@ function reviewStatus(R){
   setRules(R);
   const givens=R.digits.map((v,i)=>R.kind[i]==="P"?v:0);const all=R.digits;
   const cf=conflicts(all);
-  const nGiven=givens.filter(Boolean).length,extra=THERMOS.length||CAGES.length;
+  const nGiven=givens.filter(Boolean).length,extra=THERMOS.length||CAGES.length||NRC;
   const fix="Pas de puzzel hieronder aan: tik een vakje en kies het goede cijfer, of gebruik Wissen.";
   if(cf.size)return{ok:false,kind:"bad",text:"Er staan dubbele cijfers in een rij, kolom of blok (rood omrand). Vergelijk met je foto en verbeter ze.",solution:null,cf};
   if(nGiven<17&&!extra)return{ok:false,kind:"info",text:`${nGiven} cijfers ingevuld. Een sudoku heeft er minstens 17 nodig. Is het een thermo- of killersudoku? Teken dan de thermometers of kooien.`,solution:null,cf};
@@ -1109,9 +1124,9 @@ function reviewStatus(R){
 }
 function renderReview(){
   const R=S.review,st=reviewStatus(R);
-  if(st.ok){const key=R.digits.map((v,i)=>R.kind[i]==="P"?v:0).join("")+JSON.stringify(R.thermos||[])+JSON.stringify(R.cages||[]);
-    if(R.autoKey!==key){R.autoKey=key;R.autoStars=rateStars({givens:R.digits.map((v,i)=>R.kind[i]==="P"?v:0),thermos:R.thermos,cages:R.cages});setRules(R)}}
-  const fake={givens:R.digits.map((v,i)=>R.kind[i]==="P"?v:0),entries:R.digits.map((v,i)=>R.kind[i]==="H"?v:0),notes:Array(81).fill(0),centers:Array(81).fill(0),colors:Array(81).fill(0),solution:null,thermos:R.thermos||[],drawing:R.drawing||null,cages:R.cages||[],cageDrawing:R.cageDrawing||null};
+  if(st.ok){const key=R.digits.map((v,i)=>R.kind[i]==="P"?v:0).join("")+JSON.stringify(R.thermos||[])+JSON.stringify(R.cages||[])+(R.nrc?"n":"");
+    if(R.autoKey!==key){R.autoKey=key;R.autoStars=rateStars({givens:R.digits.map((v,i)=>R.kind[i]==="P"?v:0),thermos:R.thermos,cages:R.cages,nrc:R.nrc});setRules(R)}}
+  const fake={givens:R.digits.map((v,i)=>R.kind[i]==="P"?v:0),entries:R.digits.map((v,i)=>R.kind[i]==="H"?v:0),notes:Array(81).fill(0),centers:Array(81).fill(0),colors:Array(81).fill(0),solution:null,nrc:!!R.nrc,thermos:R.thermos||[],drawing:R.drawing||null,cages:R.cages||[],cageDrawing:R.cageDrawing||null};
   const cgEditor=R.cageDrawing?`<div class="msg info">Tik de vakjes van de kooi aan en vul de som in. ${R.cageDrawing.cells.length?`${R.cageDrawing.cells.length} vakje${R.cageDrawing.cells.length>1?"s":""} gekozen.`:""}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end"><label class="field" style="width:90px">Som<input id="cageSum" type="number" min="1" max="45" inputmode="numeric" value="${R.cageDrawing.sum||""}"></label><button class="btn primary" type="button" data-act="cg-done">Kooi klaar</button><button class="btn" type="button" data-act="cg-back" ${R.cageDrawing.cells.length?"":"disabled"}>Vakje terug</button><button class="btn ghost" type="button" data-act="cg-cancel">Stoppen</button></div>`
     :`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="notice">${(R.cages||[]).length?`${R.cages.length} kooien`:"Killer sudoku?"}</span><button class="btn" type="button" data-act="cg-start">Kooi tekenen</button>${(R.cages||[]).length?`<button class="btn ghost" type="button" data-act="cg-undo">Laatste kooi wissen</button>`:""}</div>`;
@@ -1148,6 +1163,7 @@ function renderReview(){
     </section>
     <aside class="panel">
       ${R.mode==="hint"?"":side}
+      ${R.drawing||R.cageDrawing?"":`<button type="button" class="switchrow" role="switch" aria-checked="${!!R.nrc}" data-act="nrc-toggle"><span>NRC-sudoku<br><span class="notice">${R.autoNrc?"Grijze vakken gevonden op de foto. ":""}Vier extra grijze vakken die ook elk 1 t/m 9 bevatten.</span></span><span class="track" aria-hidden="true"><span class="knob"></span></span></button>`}
       ${R.drawing?thEditor:R.cageDrawing?cgEditor:thEditor+cgEditor}
       ${R.photo?`<img class="photo-ref" src="${R.photo}" alt="Je foto ter vergelijking">`:""}
       <div class="msg ${st.kind}">${esc(st.text)}</div>
@@ -1176,8 +1192,8 @@ function saveDigitized(){
   const starsAuto=!!(stars&&!R.stars&&stars===R.autoStars);
   const p=normalize({id:uid(),title:(t?.value||R.title).trim()||"Sudoku",stars,starsAuto,difficultyText:(d?.value||"").trim()||(stars&&!starsAuto?`${stars} sterren`:""),
     source:R.photo?"Gedigitaliseerd van foto op "+new Date().toLocaleDateString("nl-NL",{day:"numeric",month:"long",year:"numeric"}):"Zelf ingevoerd",
-    givens:toStr(R.digits.map((v,i)=>R.kind[i]==="P"?v:0)),entries:toStr(R.digits.map((v,i)=>R.kind[i]==="H"?v:0)),thermos:R.thermos||[],cages:R.cages||[]});
-  if(p.givens.filter(Boolean).length<17&&!p.thermos.length&&!p.cages.length){R.status={};const m=main.querySelector(".msg");if(m){m.className="msg bad";m.textContent="Vul eerst minstens 17 gedrukte cijfers in, of teken de thermometers als het een thermosudoku is."}return}
+    givens:toStr(R.digits.map((v,i)=>R.kind[i]==="P"?v:0)),entries:toStr(R.digits.map((v,i)=>R.kind[i]==="H"?v:0)),thermos:R.thermos||[],cages:R.cages||[],nrc:!!R.nrc});
+  if(p.givens.filter(Boolean).length<17&&!p.thermos.length&&!p.cages.length&&!p.nrc){R.status={};const m=main.querySelector(".msg");if(m){m.className="msg bad";m.textContent="Vul eerst minstens 17 gedrukte cijfers in, of teken de thermometers als het een thermosudoku is."}return}
   if(R.editId&&S.puzzles.has(R.editId)){const old=S.puzzles.get(R.editId);
     Object.assign(p,{id:old.id,created:old.created,seconds:old.seconds,hints:old.hints,source:old.source,solvedAt:null,solution:null,
       notes:old.notes.map((n,i)=>p.givens[i]?0:n),centers:old.centers.map((n,i)=>p.givens[i]?0:n),colors:old.colors})}
@@ -1187,7 +1203,7 @@ function saveDigitized(){
 function editPuzzle(p){
   const digits=p.givens.map((g,i)=>g||p.entries[i]),kind=digits.map((v,i)=>p.givens[i]?"P":v?"H":"");
   S.review={mode:"digi",editId:p.id,engine:"edit",unsure:new Set(),thermos:(p.thermos||[]).map(t=>t.slice()),cages:(p.cages||[]).map(k=>({sum:k.sum,cells:k.cells.slice()})),
-    digits,kind,stars:p.starsAuto?null:p.stars,difficultyText:p.difficultyText,title:p.title,photo:null,hintState:null,sel:-1};
+    nrc:!!p.nrc,digits,kind,stars:p.starsAuto?null:p.stars,difficultyText:p.difficultyText,title:p.title,photo:null,hintState:null,sel:-1};
   closeSheet();S.cur=null;S.view="review";S.sel=-1;render();window.scrollTo(0,0);
 }
 
@@ -1284,6 +1300,7 @@ function openHelp(){
     ${r(I.check,"Controleer: kijk of je cijfers kloppen. Is alles goed, dan volgt een feestje.")}
     ${r('<svg viewBox="0 0 24 24" width="24" height="24"><circle cx="6" cy="12" r="4" fill="var(--thermo)"/><path d="M6 12h14" stroke="var(--thermo)" stroke-width="3" stroke-linecap="round"/></svg>',"Thermosudoku: op elke thermometer worden de cijfers vanaf het bolletje steeds hoger. Kies Thermo bij Nieuwe puzzel.")}
     ${r('<svg viewBox="0 0 24 24" width="24" height="24"><rect x="3" y="3" width="18" height="18" rx="1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/><text x="5" y="10" font-size="7" font-weight="700" fill="currentColor">15</text></svg>',"Killer sudoku: de cijfers in elke kooi tellen op tot het getal linksboven, zonder dubbele cijfers in de kooi. Kies Killer bij Nieuwe puzzel.")}
+    ${r('<svg viewBox="0 0 24 24" width="24" height="24"><rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="6" y="6" width="5" height="5" fill="var(--xbox)"/><rect x="13" y="13" width="5" height="5" fill="var(--xbox)"/></svg>',"NRC-sudoku: ook de vier grijze vakken bevatten elk de cijfers 1 tot en met 9. Kies NRC bij Nieuwe puzzel.")}
     </dl><p class="notice">Veeg met je vinger over het raster om meerdere vakjes te kiezen; een cijfer, hoek- of middencijfer, kleur of Wissen geldt dan voor al die vakjes. Met een toetsenbord: Shift of Ctrl ingedrukt houden en klikken.</p><p class="notice">Met een toetsenbord: pijltjes om te bewegen, 1-9 om in te vullen, N om te wisselen tussen groot, hoek en midden.</p>
     <div><button class="btn primary" type="button" data-act="close">Begrepen</button></div>`)}
 
@@ -1403,6 +1420,7 @@ document.addEventListener("click",e=>{
     case"rkind":{const R=S.review;if(R.sel>=0&&R.digits[R.sel]){R.kind[R.sel]=R.kind[R.sel]==="P"?"H":"P";if(R.mode==="hint")reviewHint();renderReview()}break}
     case"rerase":reviewInput(0);break;
     case"editpuzzle":if(S.cur)editPuzzle(S.cur);break;
+    case"nrc-toggle":{const R=S.review;R.nrc=!R.nrc;R.autoNrc=false;if(R.mode==="hint")reviewHint();renderReview();break}
     case"th-start":S.review.drawing=[];renderReview();break;
     case"cg-start":S.review.cageDrawing={cells:[],sum:0};renderReview();break;
     case"cg-back":S.review.cageDrawing?.cells.pop();renderReview();break;
